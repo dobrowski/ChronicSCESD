@@ -25,6 +25,8 @@ chronic.all <- tbl(con,"CHRONIC") %>%
     mutate(rate = chronic_absenteeism_rate)
 
 
+write_rds(chronic.all, "chronic-all.rds")
+
 
 absent.all <- tbl(con,"ABSENT") %>%
     filter(academic_year == max(academic_year) ,
@@ -37,6 +39,7 @@ absent.all <- tbl(con,"ABSENT") %>%
     left_join_codebook("ABSENT","reporting_category") 
 
 
+write_rds(absent.all, "absent-all.rds")
 
 chronic_comp <- tbl(con,"CHRONIC") %>%
     filter(academic_year == max(academic_year) ,
