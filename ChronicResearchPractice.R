@@ -22,10 +22,11 @@ chronic.all <- tbl(con,"CHRONIC") %>%
     ) %>%
     collect()  %>%
     left_join_codebook("CHRONIC","reporting_category") %>%
-    mutate(rate = chronic_absenteeism_rate)
+    mutate(rate = chronic_absenteeism_rate,
+           definition = paste0(definition," (", chronic_absenteeism_eligible_cumulative_enrollment , ")"))
 
 
-write_rds(chronic.all, "chronic-all.rds")
+write_rds(chronic.all, here("Chronic", "chronic-all.rds") )
 
 
 absent.all <- tbl(con,"ABSENT") %>%
@@ -36,10 +37,12 @@ absent.all <- tbl(con,"ABSENT") %>%
     #       district_name == "Salinas City Elementary"
     ) %>%
     collect()  %>%
-    left_join_codebook("ABSENT","reporting_category") 
+    left_join_codebook("ABSENT","reporting_category") %>%
+    mutate(definition = paste0(definition," (", eligible_cumulative_enrollment , ")"))
 
 
-write_rds(absent.all, "absent-all.rds")
+
+write_rds(absent.all, here("Chronic", "absent-all.rds") )
 
 chronic_comp <- tbl(con,"CHRONIC") %>%
     filter(academic_year == max(academic_year) ,
@@ -380,6 +383,8 @@ all.graphs("Alisal Union")
 all.graphs("Salinas City")
 
 all.graphs("North Monterey")
+
+all.graphs("Soledad")
 
 
 ### End -----

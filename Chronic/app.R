@@ -27,6 +27,9 @@ absent.all <- read_rds("absent-all.rds")
 
 chronic.all <- read_rds("chronic-all.rds")
 
+scesd.2023 <- read_rds("scesd-2023.rds")
+
+
 chronic_graph <- function(df, indi = rate  , xxx, tit, subtit) {
     
     df  %>%
@@ -251,7 +254,7 @@ absence.reason.school <- function(df, dist) {
 
 
 
-dist.list <- c("Alisal Union", "North Monterey", "Salinas City")
+dist.list <- c("Alisal Union", "North Monterey", "Salinas City", "Soledad")
 sch.list <- c("District Office")
 
 
@@ -290,6 +293,13 @@ ui <- fluidPage(
                 tabPanel("Reason for Absence",  
                          plotOutput("reasonPlot", height = "600px") ,
                          plotOutput("reasonSchPlot", height = "600px") 
+                ),
+                tabPanel("2022-23 Year to Date",  
+                         p("This data is not yet available for most districts."),
+                         br(),
+                         plotOutput("currentPlot", height = "600px") ,
+                         plotOutput("currentSchPlot", height = "600px") 
+
                 )
             )
         )
@@ -338,8 +348,7 @@ server <- function(input, output, session) {
     ## My PLots    
     
     output$adaPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        
+
         absent() %>%
         # absent.all %>%
         #     filter(str_detect(district_name, input$district.choice)) %>%
@@ -347,38 +356,58 @@ server <- function(input, output, session) {
     })
     
     output$adaSchPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
         absent.all %>%
             filter(str_detect(district_name, input$district.choice)) %>%
             absent.by.school(input$district.choice)
     })
     
     output$chronicPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
         chronic() %>%
             chronic.student.group(input$district.choice, input$school.choice)
     })
     
     output$chronicSchPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
         chronic.all %>%
             filter(str_detect(district_name, input$district.choice)) %>%
             chronic.by.school(input$district.choice)
     })
     
     output$reasonPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
         absent() %>%
             absence.reason.group(input$district.choice, input$school.choice)
     })
     
     
     output$reasonSchPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
         absent.all %>%
             filter(str_detect(district_name, input$district.choice)) %>%
             absence.reason.school(input$district.choice)
     })
+    
+    
+    
+    output$currentPlot <- renderPlot({
+        scesd.2023 %>%
+            filter(name == "January",
+                   district_name == input$district.choice,
+                   school_name ==  input$school.choice ) %>%
+            chronic_graph_percent(indi = value/100  , xxx = definition, tit = "Chronic Absenteeism", 
+                                  subtit = paste0(input$school.choice, " Current Year through January"))
+    })
+    
+    output$currentSchPlot <- renderPlot({
+        scesd.2023 %>%
+            filter(name == "January",
+                   district_name == input$district.choice,
+                   definition == "Over all" ) %>%
+            chronic_graph_percent(indi = value/100  , xxx = school_name, tit = paste0(input$district.choice," Chronic Absenteeism"), subtit = "Current Year through January")
+        
+    })
+    
+    
+    
+    
+    
     
     
 }
