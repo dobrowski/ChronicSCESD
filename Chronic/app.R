@@ -27,7 +27,7 @@ absent.all <- read_rds("absent-all.rds")
 
 chronic.all <- read_rds("chronic-all.rds")
 
-scesd.2023 <- read_rds("scesd-2023.rds")
+graph2023 <- read_rds("graph2023.rds")
 
 
 chronic_graph <- function(df, indi = rate  , xxx, tit, subtit) {
@@ -99,7 +99,7 @@ absent.student.group <- function(df, dist, skul) {
                ) %>%
         chronic_graph(definition,
                       indi = average_days_absent,
-                      tit = "Average Days Absent by Student Group",
+                      tit = "Average Days Absent by Student Group for the School Year",
                       subtit = paste0(dist, " - ", skul ," - 2021-22")) 
     
  #   ggsave(here("output", paste0(dist, " - District Level - Absent by Student Group.png") ) )
@@ -115,7 +115,7 @@ absent.by.school <- function(df, dist) {
                reporting_category == "TA") %>%
         chronic_graph(school_name,
                       indi = average_days_absent,
-                      tit = "Average Days Absent by School",
+                      tit = "Average Days Absent by School for the School Year",
                       subtit = paste0(dist, " - 2021-22"))
     
  #   ggsave(here("output", paste0(dist, " - District Level - Absent by School.png") ) )
@@ -295,7 +295,7 @@ ui <- fluidPage(
                          plotOutput("reasonSchPlot", height = "600px") 
                 ),
                 tabPanel("2022-23 Year to Date",  
-                         p("This data is not yet available for most districts."),
+                         p("Complete data is not yet available for all districts and schools."),
                          br(),
                          plotOutput("currentPlot", height = "600px") ,
                          plotOutput("currentSchPlot", height = "600px") 
@@ -387,20 +387,32 @@ server <- function(input, output, session) {
     
     
     output$currentPlot <- renderPlot({
-        scesd.2023 %>%
-            filter(name == "January",
-                   district_name == input$district.choice,
+        
+        timeframe <- case_when( input$district.choice == "Salinas City" ~ "January",
+                                input$district.choice == "Alisal Union" ~ "Second Trimester",
+                                input$district.choice == "Soledad" ~ "March 6",
+                                input$district.choice == "North Monterey" ~ "March 7",
+                                )
+        
+        graph2023 %>%
+            filter(district_name == input$district.choice,
                    school_name ==  input$school.choice ) %>%
-            chronic_graph_percent(indi = value/100  , xxx = definition, tit = "Chronic Absenteeism", 
-                                  subtit = paste0(input$school.choice, " Current Year through January"))
+            chronic_graph_percent(indi = chronic.rate  , xxx = definition, tit = "Chronic Absenteeism", 
+                                  subtit = paste0(input$school.choice, " Current Year through ", timeframe))
     })
     
     output$currentSchPlot <- renderPlot({
-        scesd.2023 %>%
-            filter(name == "January",
-                   district_name == input$district.choice,
+        timeframe <- case_when( input$district.choice == "Salinas City" ~ "January",
+                                input$district.choice == "Alisal Union" ~ "Second Trimester",
+                                input$district.choice == "Soledad" ~ "March 6",
+                                input$district.choice == "North Monterey" ~ "March 7",
+        )
+        
+        
+        graph2023 %>%
+            filter(district_name == input$district.choice,
                    definition == "Over all" ) %>%
-            chronic_graph_percent(indi = value/100  , xxx = school_name, tit = paste0(input$district.choice," Chronic Absenteeism"), subtit = "Current Year through January")
+            chronic_graph_percent(indi = chronic.rate  , xxx = school_name, tit = paste0(input$district.choice," Chronic Absenteeism"), subtit = paste0("Current Year through ", timeframe))
         
     })
     
