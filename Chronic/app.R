@@ -295,8 +295,6 @@ ui <- fluidPage(
                          plotOutput("reasonSchPlot", height = "600px") 
                 ),
                 tabPanel("2022-23 Year to Date",  
-                         p("Complete data is not yet available for all districts and schools."),
-                         br(),
                          plotOutput("currentPlot", height = "600px") ,
                          plotOutput("currentSchPlot", height = "600px") 
 
@@ -388,31 +386,35 @@ server <- function(input, output, session) {
     
     output$currentPlot <- renderPlot({
         
-        timeframe <- case_when( input$district.choice == "Salinas City" ~ "January",
-                                input$district.choice == "Alisal Union" ~ "Second Trimester",
-                                input$district.choice == "Soledad" ~ "March 6",
-                                input$district.choice == "North Monterey" ~ "March 7",
+        timeframe <- case_when( input$district.choice == "Salinas City" ~ "March 15",
+                                input$district.choice == "Alisal Union" ~ "March 16",
+                                input$district.choice == "Soledad" ~ "March 14",
+                                input$district.choice == "North Monterey" ~ "February 28",
                                 )
         
         graph2023 %>%
             filter(district_name == input$district.choice,
                    school_name ==  input$school.choice ) %>%
-            chronic_graph_percent(indi = chronic.rate  , xxx = definition, tit = "Chronic Absenteeism", 
-                                  subtit = paste0(input$school.choice, " Current Year through ", timeframe))
+            chronic_graph_percent(indi = chronic.rate  , xxx = definition, tit = paste0(input$district.choice ," Chronic Absenteeism"), 
+                                  subtit = paste0(input$school.choice, " 2022-23 through ", timeframe)) +
+                                 labs( caption = "Source: Data exported from SIS")
     })
     
     output$currentSchPlot <- renderPlot({
-        timeframe <- case_when( input$district.choice == "Salinas City" ~ "January",
+        timeframe <- case_when( input$district.choice == "Salinas City" ~ "March 15",
                                 input$district.choice == "Alisal Union" ~ "Second Trimester",
-                                input$district.choice == "Soledad" ~ "March 6",
-                                input$district.choice == "North Monterey" ~ "March 7",
+                                input$district.choice == "Soledad" ~ "March 14",
+                                input$district.choice == "North Monterey" ~ "February 28",
         )
         
         
         graph2023 %>%
             filter(district_name == input$district.choice,
                    definition == "Over all" ) %>%
-            chronic_graph_percent(indi = chronic.rate  , xxx = school_name, tit = paste0(input$district.choice," Chronic Absenteeism"), subtit = paste0("Current Year through ", timeframe))
+            chronic_graph_percent(indi = chronic.rate  , xxx = school_name, 
+                                  tit = paste0(input$district.choice," Chronic Absenteeism"), 
+                                  subtit = paste0("2022-23 through ", timeframe)) +
+            labs( caption = "Source: Data exported from SIS")
         
     })
     

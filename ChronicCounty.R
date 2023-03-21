@@ -231,3 +231,67 @@ absent.all %>%
 
 
 ggsave(here("output", paste0("Monterey County - Absent by District.png") ), width = 9, height = 5 )
+
+
+
+### YTD with select grades 
+
+# Using the invidual records from 
+
+
+graph2023.tk %>%
+    filter(district_name == "Soledad",
+           school_name ==  "District Office" 
+           ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = definition,
+                          tit = paste0("Soledad" ," Chronic Absenteeism"), 
+                          subtit = paste0("TK - K" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+
+ggsave(here("output", paste0("Soledad - TK-K - YTD.png") ), width = 9, height = 6 )
+
+graph2023.tk %>%
+    filter(district_name == "North Monterey",
+           school_name ==  "District Office" 
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = definition,
+                          tit = paste0("North Monterey" ," Chronic Absenteeism"), 
+                          subtit = paste0("TK - 2" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("North Monterey - TK-2 - YTD.png") ), width = 9, height = 6 )
+
+
+
+graph2023.tk %>%
+    filter(district_name == "Alisal Union",
+           school_name ==  "District Office" 
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = definition,
+                          tit = paste0("Alisal" ," Chronic Absenteeism"), 
+                          subtit = paste0("TK - K" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("Alisal - TK-K - YTD.png") ), width = 9, height = 6 )
+
+
+graph2023.tk %>%
+    filter(district_name == "Salinas City",
+           school_name ==  "District Office" 
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = definition,
+                          tit = paste0("Salinas City" ," Chronic Absenteeism"), 
+                          subtit = paste0("TK - K" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("Salinas City - TK-K - YTD.png") ), width = 9, height = 6 )
+

@@ -6,9 +6,12 @@
 library(tidyverse)
 library(readxl)
 library(here)
+library(calendR)
+library(lubridate)
 
 
-nmcusd.demo <- read_xlsx(here("data", "NMCUSD Student Chronic Absenteeism File_2022-2023.xlsx"),
+
+nmcusd.demo <- read_xlsx(here("data", "nmcusd" ,"NMCUSD Student Chronic Absenteeism File_2022-2023.xlsx"),
                     sheet = "Student Demographics") %>%
     mutate(district_name = "North Monterey",
            val = TRUE) %>%
@@ -239,224 +242,194 @@ nmcusd.tk %>%
 
 ggsave(here("output","nmcusd","Absenteeism TK-2 by SWD by School.png"), width = 9, height = 6)
 
-### Calendar ----
-
-library(calendR)
-library(lubridate)
+### Alt Approach Same technique as other schools  ----
 
 
-nmcusd.dates <- read_xlsx(here("data", "NMCUSD Student Chronic Absenteeism File_2022-2023.xlsx"),
-                         sheet = "Student Absence Details",
-                         col_types = c("text","numeric","text","text","date","numeric","text","text","text"))
 
 
-### All Calendar -----
 
-
-nmcusd.dates.out <- nmcusd.dates %>%
-    filter(`Full Day Amount` == 1) %>%
-    mutate(att.date = as.Date(`Attendance Date`)) %>%
-    group_by(att.date) %>%
-    count() %>%
-    ungroup()
-    
-
-
-dat_pr <- nmcusd.dates.out %>% 
-    complete(att.date = seq.Date(ymd("2022-08-10"), 
-                                 ymd("2023-02-28"), 
-                        "day"))  %>%
-    mutate(n = replace_na(n,0))  %>%
-    
-    mutate(weekday = wday(att.date, label = T, week_start = 1), 
-           month = month(att.date, label = T, abbr = F),
-           week = isoweek(att.date),
-           day = day(att.date),
-           text_col = "black",
-           perc = n/max(n)
+nomo.demo <- read_xlsx(here("data", "nmcusd" ,"NMCUSD Student Chronic Absenteeism File_2022-2023.xlsx"),
+                         sheet = "Student Demographics") %>%
+    mutate(district_name = "North Monterey") %>%
+    mutate(race = recode(`Race/Ethnicity`, "Decline to state/unknown" = "Decline to state race"),
+           `Contact's Highest Education Level` = recode(`Contact's Highest Education Level`, "Decline to state/unknown" = "Decline to state education")
     )
 
 
+nomo.joint <- left_join(nmcusd.att, nomo.demo) %>%
+           # school_name = recode(School,
+           #                      "1" = "San Vicente Elementary",
+           #                      "2" = "Gabilan Elementary",
+           #                      "3" = "Main Street Middle",
+           #                      "4" = "Soledad High",
+           #                      "5" = "Rose Ferrero Elementary",
+           #                      "6" = "Pinnacles High",
+           #                      "9" = "Frank Ledesma Elementary",
+           #                      "10" = "Jack Franscioni Elementary"
+           # ),
+           mutate(
+               el.status = `English Proficiency`,
+           Gender = recode(Sex, "M" = "Male", "F" = "Female", "X" = "Nonbinary"),
+           
+           race =  `Race/Ethnicity`,
+           foster = recode(`Foster Student`, "Y" = "Foster", "N" = "Not Foster"),
+           migrant = recode(`Migrant Student`, "Y" = "Migrant", "N" = "Not Migrant"),
+           sped = recode(SWD, "Y" = "SWD", "N" = "Not SWD"),
+           disadvantaged = recode(`Elligible for FRPM`, "Y" = "Low Income", "N" = "Not Low Income"),
+           homeless = recode(`Homeless Student`, "Y" = "Homeless", "N" = "Not Homeless"),
+           school_name = School
+           
+           
+    ) %>%
+    filter(!is.na(chronic),
+ #          Grade %in% c("TK","K","01","02") # Remember to delete
+           )
 
 
-calendR(start_date = "2022-08-10", # Custom start date
-        end_date = "2023-02-28" , # "2023-02-28",
-        special.days = dat_pr$perc[1:length(dat_pr$perc)], # Vector of the same length as the number of days of the year
-        gradient = TRUE,      # Set gradient = TRUE to create the heatmap
-        special.col = "red", # Color of the gradient for the highest value
-        low.col = "white",
-        title = "North Monterey County - All Students",
-        subtitle = "The more intense the Red color, the larger the number of students absent"
-            )                       # Color of the gradient for the lowest value
+nomo.school <- nomo.joint %>%
+    group_by(school_name) %>%
+    transmute(school_name,
+              chronic.rate = mean(chronic)) %>%
+    distinct() %>%
+    ungroup() %>%
+    mutate(district_name = "North Monterey",
+           definition = "Over all") %>%
+    select(district_name, school_name, definition, chronic.rate)
 
 
-ggsave(here("output","nmcusd","Calendar All Students.png"), width = 9, height = 6)
+nomo.do <- nomo.joint %>%
+    ungroup() %>%
+    transmute(chronic.rate = mean(chronic)) %>%
+    distinct() %>%
+    mutate(school_name = "District Office"    ,
+           district_name = "North Monterey",
+           definition = "Over all")
 
-### TK Calendar ------
 
-nm.cal.heat <- function(df, tit) {
+nomo.2023 <- nomo.school %>%
+    bind_rows(nomo.do)
+
+
+
+
+
+
+########                      
+
+nomo.stu.grp <- nomo.joint %>%
+    group_by(definition = Gender) %>%
+    summarise(chronic.rate = mean(chronic),
+              count_n = n()) %>%
+    distinct() %>%
+    mutate(# School = str_trim(School),
+        district_name = "North Monterey",
+        school_name = "District Office",
+        #      definition = "Over all"
+    )
+
+
+nomo.stu.grp <- nomo.stu.grp %>% filter(school_name == "")
+
+
+nomo.fun <- function(var) {
     
-
-nmcusd.dates.out <- df %>%
-    filter(`Full Day Amount` == 1) %>%
-    mutate(att.date = as.Date(`Attendance Date`)) %>%
-    group_by(att.date) %>%
-    count() %>%
-    ungroup()
-
-
-dat_pr <- nmcusd.dates.out %>% 
-    complete(att.date = seq.Date(min(att.date), 
-                                 max(att.date), 
-                                 "day"))  %>%
-    mutate(n = replace_na(n,0))  %>%
-    mutate(text_col = "black",
-           perc = n/max(n))
-
-
-
-
-calendR(start_date = min(dat_pr$att.date), # Custom start date
-        end_date = max(dat_pr$att.date) , # "2023-02-28",
-        special.days = dat_pr$perc[1:length(dat_pr$perc)], # Vector of the same length as the number of days of the year
-        gradient = TRUE,      # Set gradient = TRUE to create the heatmap
-        special.col = "red", # Color of the gradient for the highest value
-        low.col = "white",
-        title = tit, 
-        subtitle = "The more intense the Red color, the larger the number of students absent"
-)                       # Color of the gradient for the lowest value
-
-
-ggsave(here("output","nmcusd",paste0(tit,".png")), width = 9, height = 6)
-
+    
+    
+    nomo.temp <- nomo.joint %>%
+        group_by(definition = as.character({{var}})) %>%
+        summarise(chronic.rate = mean(chronic),
+                  count_n = n()) %>%
+        distinct() %>%
+        mutate(# School = str_trim(School),
+            district_name = "North Monterey",
+            school_name = "District Office",
+            #      definition = "Over all"
+        )
+    
+    bind_rows(nomo.stu.grp,nomo.temp)
+    
 }
 
-nmcusd.dates %>%
-    filter(Grade %in% c("TK","K","1","2")) %>%
-    nm.cal.heat("North Monterey County - TK-2 Students")
+nomo.grps <- nomo.fun(Gender) %>%
+    bind_rows(nomo.fun(race) ) %>%
+    bind_rows(nomo.fun(el.status) ) %>%
+    bind_rows(nomo.fun( sped) ) %>%
+    bind_rows(nomo.fun(disadvantaged) ) %>%
+    bind_rows(nomo.fun(homeless) ) %>%
+    bind_rows(nomo.fun(foster) ) %>%
+    bind_rows(nomo.fun(migrant) ) 
 
 
-nmcusd.dates %>%
-#    filter(Grade %in% c("TK","K","1","2")) %>%
-    nm.cal.heat("North Monterey County - All Students")
-
-
-
-
-nmcusd.dates %>%
-    mutate(`Student ID` = as.character(`Student ID`)) %>%
-    left_join(nmcusd.demo) %>%
-    filter(Grade %in% c("TK","K","1","2"),
-           SWD == "Y") %>%
-    nm.cal.heat("North Monterey County - TK-2 Students with Disabilities")
 
 
 ###
 
 
 
-
-nm.holiday <- tribble(~ att.date, ~n,
-                      "2022-08-01", "Holiday",
-                      "2022-08-02", "Holiday",
-                      "2022-08-03", "Holiday",
-                      "2022-08-04", "Holiday",
-                      "2022-08-05", "Holiday",
-                      "2022-08-08", "Holiday",
-                      "2022-08-09", "Holiday",
-                      "2022-09-05", "Holiday",
-                      "2022-10-10", "Holiday",
-                      "2022-11-11", "Holiday",
-                      "2022-11-21", "Holiday",
-                      "2022-11-22", "Holiday",
-                      "2022-11-23", "Holiday",
-                      "2022-11-24", "Holiday",
-                      "2022-11-25", "Holiday",
-                      "2022-12-19", "Holiday",
-                      "2022-12-20", "Holiday",
-                      "2022-12-21", "Holiday",
-                      "2022-12-22", "Holiday",
-                      "2022-12-23", "Holiday",
-                      "2022-12-26", "Holiday",
-                      "2022-12-27", "Holiday",
-                      "2022-12-28", "Holiday",
-                      "2022-12-29", "Holiday",
-                      "2022-12-30", "Holiday",
-                      "2023-01-02", "Holiday",
-                      "2023-01-03", "Holiday",
-                      "2023-01-04", "Holiday",
-                      "2023-01-05", "Holiday",
-                      "2023-01-06", "Holiday",
-                      "2023-01-09", "Holiday",
-                      "2023-01-16", "Holiday",
-                      "2023-02-20", "Holiday"
-                      ) %>%
-    mutate(att.date = ymd(att.date))
+nomo.fun.sch <- function(var, schooly) {
+    
+    nomo.joint %>%
+        filter(str_detect (school_name,schooly))  %>%
+        group_by(definition = {{var}}) %>%
+        summarise(chronic.rate = mean(chronic),
+                  count_n = n()) %>%
+        distinct() %>%
+        mutate(# School = str_trim(School),
+            district_name = "North Monterey",
+            school_name = schooly,
+            #      definition = "Over all"
+        )
+    
+    
+    
+}
 
 
-nm.stu.cal <- function(stu.id) {
-    
-    
-    nmcusd.dates.out <- nmcusd.dates %>%
-        filter(`Full Day Amount` == 1,
-               `Student ID` %in% stu.id) %>%
-        mutate(att.date = as.Date(`Attendance Date`)) %>%
-        group_by(att.date) %>%
-        count() %>%
-        ungroup() %>%
-        mutate(n = "Absent") %>%
-        bind_rows(nm.holiday)
+
+nomo.schools <- nomo.joint$school_name %>% unique()
+
+nomo.grps.sch <- nomo.fun.sch(homeless, "Elkhorn") %>%
+    filter(school_name == "")
+
+for (sch in nomo.schools) {
     
     
     
-    dat_pr <- nmcusd.dates.out %>% 
-        complete(att.date = seq.Date(ymd("2022-08-01"), 
-                                     ymd("2023-02-28"),  
-                                     "day")) # %>%
-    #    mutate(n = replace_na(n,0)) # %>%
+    nomo.grps.sch.temp <- nomo.fun.sch(homeless,sch) %>%
+        bind_rows(nomo.fun.sch(migrant,sch) ) %>%
+        bind_rows(nomo.fun.sch(sped,sch) ) %>%
+        bind_rows(nomo.fun.sch(foster,sch) ) %>%
         
-        # mutate(weekday = wday(att.date, label = T, week_start = 1), 
-        #        month = month(att.date, label = T, abbr = F),
-        #        week = isoweek(att.date),
-        #        day = day(att.date),
-        #        text_col = "black",
-        #        perc = n/1000
-        #        )
+        bind_rows(nomo.fun.sch(el.status,sch) ) %>%
+        bind_rows(nomo.fun.sch(Gender,sch) ) %>%
+        bind_rows(nomo.fun.sch(race,sch) ) 
     
-    
-    calendR(start_date = "2022-08-01", # Custom start date
-            end_date = "2023-02-28" , # "2023-02-28",
-            special.days = dat_pr$n[1:length(dat_pr$n)], # Vector of the same length as the number of days of the year
-            # gradient = TRUE,      # Set gradient = TRUE to create the heatmap
-            special.col = c("red","lightblue"),
-          #  special.col = "red", # Color of the gradient for the highest value
-            low.col = "white",
-            title = paste0("Absences for ",stu.id),
-            subtitle = "Missed days are in Red, Nonschool Days are in Light Blue"
-                )   
-    
+    nomo.grps.sch <- bind_rows(nomo.grps.sch,nomo.grps.sch.temp)
     
 }
 
-
-nm.stu.cal(27742)
-
-ggsave(here("output","nmcusd",paste0("Student 27742.png")), width = 9, height = 6)
-
-nm.stu.cal(28856)
-
-ggsave(here("output","nmcusd",paste0("Student 28856.png")), width = 9, height = 6)
-
-nm.stu.cal(7000021717)
-
-ggsave(here("output","nmcusd",paste0("Student 7000021717.png")), width = 9, height = 6)
+nomo.grps.sch <- nomo.grps.sch %>%
+    bind_rows(nomo.grps) %>%
+    distinct() %>%
+    filter(count_n >=10,
+           !is.na(definition),
+           definition != "ND",
+           !str_detect(definition,"Decline")) 
 
 
-###
 
-nm.stud.count <- nmcusd.dates %>%
-    group_by(`Student ID`) %>%
-    summarise(sum(`Full Day Amount`))
+nomo.2023.rev <- nomo.school %>%
+    bind_rows(nomo.do) %>%
+    bind_rows(nomo.grps.sch)
+
+
+
+
+
+
+
+
+
 
 
 

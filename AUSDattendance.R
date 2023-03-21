@@ -5,14 +5,14 @@ library(readxl)
 library(here)
 
 
-ausd.tri1 <- read_xlsx(here("data", "22-23 Tri 1 Abs.xlsx")) %>% 
+ausd.tri1 <- read_xlsx(here("data", "alisal" , "22-23 Tri 1 Abs.xlsx")) %>% 
     rename_with(.cols = c(`Enrolled`:`Percentage`),
               .fn = ~paste0(.,"_tri_1")) %>%
     filter(!str_detect(School, "RBE") ) %>%
     mutate(Absence_tri_1 = as.numeric(Absence_tri_1)) 
            
 
-ausd.vrb.tri1 <- read_xlsx(here("data", "22-23 Tri 1 Abs.xlsx"),
+ausd.vrb.tri1 <- read_xlsx(here("data","alisal" ,"22-23 Tri 1 Abs.xlsx"),
                        sheet = "VRB") %>% 
     rename_with(.cols = c(`Enrolled`:`Percentage`),
                 .fn = ~paste0(.,"_tri_1"))
@@ -21,7 +21,7 @@ ausd.tri1 <- ausd.tri1 %>%
     bind_rows(ausd.vrb.tri1)
 
 
-ausd.tri2 <- read_xlsx(here("data", "22-23 Tri 2 Abs.xlsx")) %>% 
+ausd.tri2 <- read_xlsx(here("data", "alisal" ,"22-23 Tri 2 Abs.xlsx")) %>% 
     rename_with(.cols = c(`Enrolled`:`Percentage`),
                 .fn = ~paste0(.,"_tri_2"))
 
@@ -65,17 +65,6 @@ ausd.school <- ausd.joint %>%
     select(district_name, school_name, definition, chronic.rate)
 
 
-ausd.do <- ausd.joint %>%
-    ungroup() %>%
-    transmute(chronic.rate = mean(chronic)) %>%
-    distinct() %>%
-    mutate(school_name = "District Office"    ,
-           district_name = "Alisal Union",
-           definition = "Over all")
-    
-
-ausd.2023 <- ausd.school %>%
-    bind_rows(ausd.do)
 
 # RBE is more than 120.  
 
@@ -93,16 +82,18 @@ ausd.demo <- read_sheet("https://docs.google.com/spreadsheets/d/1fr2E7KVAjFkibXS
 ausd.demo.rev <- ausd.demo %>%
     mutate(SWD = if_else(!is.na(S_CA_STU_X.PrimaryDisability), "SWD", "Not SWD"),
            ca_elastatus = replace_na(ca_elastatus, "TBD" ),
+           gender = recode(gender, "M" = "Male", "F" = "Female"),
+           
            Migrant = case_when( is.na(ca_migranted) ~ "Unknown",
                                 ca_migranted == 1 ~ "Migrant",
                                 ca_migranted == 0 ~ "Not Migrant"),
            Ethnicity = case_when(Ethnicity == "700" ~ "White",
-                                 Ethnicity ==  "100" ~ "American Indian",
+                                 Ethnicity >=  "100" &  Ethnicity <= "199" ~ "American Indian",
                                  Ethnicity == "200" ~ "Asian",
                                  Ethnicity == "400" ~ "Filipino",
-                                 Ethnicity == "205" ~ "Asian Indian",
-                                 Ethnicity == "600" ~ "Black or African American",
-                                 Ethnicity == "299" ~ "Other Asian",
+                                 Ethnicity >= "200" & Ethnicity <= "299" ~ "Asian",
+                                 Ethnicity >= "300" & Ethnicity <= "399" ~ "Pacific Islander",                                 Ethnicity == "600" ~ "Black or African American",
+                        #         Ethnicity == "299" ~ "Other Asian",
                                  Ethnicity == "500" ~ "Latino",
                                  TRUE ~ as.character(Ethnicity)
            ),
@@ -116,8 +107,20 @@ ausd.demo.rev <- ausd.demo %>%
 
 ausd.2joint <-  ausd.joint %>%
     mutate(LocalID = str_trim(LocalID)) %>%
-    left_join(ausd.demo.rev)  
+    left_join(ausd.demo.rev)  # %>%
+ #   filter(str_detect(Grade,"0")) # Remeber to delete
     
+
+ausd.do <- ausd.2joint %>%
+    ungroup() %>%
+    transmute(chronic.rate = mean(chronic)) %>%
+    distinct() %>%
+    mutate(school_name = "District Office"    ,
+           district_name = "Alisal Union",
+           definition = "Over all")
+
+
+
     ausd.2joint %>%
     group_by(definition = SWD) %>%
     summarise(chronic.rate = mean(chronic)) %>%
@@ -220,7 +223,10 @@ ausd.grps.sch <- ausd.grps.sch %>%
     bind_rows(ausd.grps) %>%
     distinct() %>%
     filter(count_n >=10,
-           !is.na(definition)) %>%
+           !is.na(definition),
+           !str_detect(definition,"TBD"),
+           !str_detect(definition,"Unk"),
+           !str_detect(definition,"Foster")) %>%
     mutate(definition = recode(definition,
                                "210" = "Foster", 
                                "120" = "Homeless", 
