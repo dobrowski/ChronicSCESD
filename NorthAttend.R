@@ -282,7 +282,7 @@ nomo.joint <- left_join(nmcusd.att, nomo.demo) %>%
            
     ) %>%
     filter(!is.na(chronic),
- #          Grade %in% c("TK","K","01","02") # Remember to delete
+           Grade %in% c("TK","K","01","02") # Remember to delete
            )
 
 
@@ -299,7 +299,20 @@ nomo.school <- nomo.joint %>%
 
 nomo.do <- nomo.joint %>%
     ungroup() %>%
-    transmute(chronic.rate = mean(chronic)) %>%
+    
+    group_by(`Student ID`) %>%
+    mutate(absent2 = sum(`Days Absent`),
+           enroll2 = sum(`Days Enrolled`),
+           absent.rate2 = absent2/enroll2,
+           chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+    ) %>%
+    
+    ungroup() %>%
+    select( `Student ID`, chronic2) %>%
+    distinct() %>%
+    
+    
+    transmute(chronic.rate = mean(chronic2)) %>%
     distinct() %>%
     mutate(school_name = "District Office"    ,
            district_name = "North Monterey",
@@ -336,8 +349,22 @@ nomo.fun <- function(var) {
     
     
     nomo.temp <- nomo.joint %>%
+        
+        group_by(`Student ID`) %>%
+        mutate(absent2 = sum(`Days Absent`),
+               enroll2 = sum(`Days Enrolled`),
+               absent.rate2 = absent2/enroll2,
+               chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+        ) %>%
+        
+        ungroup() %>%
+        select({{var}}, `Student ID`, chronic2) %>%
+        distinct() %>%
+        
+        
+        
         group_by(definition = as.character({{var}})) %>%
-        summarise(chronic.rate = mean(chronic),
+        summarise(chronic.rate = mean(chronic2),
                   count_n = n()) %>%
         distinct() %>%
         mutate(# School = str_trim(School),
@@ -411,7 +438,7 @@ for (sch in nomo.schools) {
 nomo.grps.sch <- nomo.grps.sch %>%
     bind_rows(nomo.grps) %>%
     distinct() %>%
-    filter(count_n >=10,
+    filter(#count_n >=10,
            !is.na(definition),
            definition != "ND",
            !str_detect(definition,"Decline")) 

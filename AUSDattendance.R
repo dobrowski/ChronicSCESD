@@ -108,12 +108,24 @@ ausd.demo.rev <- ausd.demo %>%
 ausd.2joint <-  ausd.joint %>%
     mutate(LocalID = str_trim(LocalID)) %>%
     left_join(ausd.demo.rev)  # %>%
- #   filter(str_detect(Grade,"0")) # Remeber to delete
+  #  filter(str_detect(Grade,"0")) # Remeber to delete
     
 
 ausd.do <- ausd.2joint %>%
     ungroup() %>%
-    transmute(chronic.rate = mean(chronic)) %>%
+    
+    group_by(LocalID) %>%
+    mutate(absent2 = sum(absent),
+           enroll2 = sum(enrolled),
+           absent.rate2 = absent2/enroll2,
+           chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+    ) %>%
+    
+    ungroup() %>%
+    select( LocalID, chronic2) %>%
+    distinct() %>%
+
+    transmute(chronic.rate = mean(chronic2)) %>%
     distinct() %>%
     mutate(school_name = "District Office"    ,
            district_name = "Alisal Union",
@@ -121,7 +133,7 @@ ausd.do <- ausd.2joint %>%
 
 
 
-    ausd.2joint %>%
+ausd.2joint %>%
     group_by(definition = SWD) %>%
     summarise(chronic.rate = mean(chronic)) %>%
     distinct() %>%
@@ -156,8 +168,22 @@ ausd.fun <- function(var) {
 
 
 ausd.temp <- ausd.2joint %>%
+    
+    group_by(LocalID) %>%
+    mutate(absent2 = sum(absent),
+           enroll2 = sum(enrolled),
+           absent.rate2 = absent2/enroll2,
+           chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+    ) %>%
+    
+    ungroup() %>%
+    select({{var}}, LocalID, chronic2) %>%
+    distinct() %>%
+    
+    
+    
     group_by(definition = as.character({{var}})) %>%
-    summarise(chronic.rate = mean(chronic),
+    summarise(chronic.rate = mean(chronic2),
               count_n = n()) %>%
     distinct() %>%
     mutate(# School = str_trim(School),
@@ -222,11 +248,12 @@ ausd.grps.sch <- bind_rows(ausd.grps.sch,ausd.grps.sch.temp)
 ausd.grps.sch <- ausd.grps.sch %>%
     bind_rows(ausd.grps) %>%
     distinct() %>%
-    filter(count_n >=10,
+    filter(#count_n >=10,
            !is.na(definition),
            !str_detect(definition,"TBD"),
            !str_detect(definition,"Unk"),
-           !str_detect(definition,"Foster")) %>%
+           !str_detect(definition,"Foster")
+           ) %>%
     mutate(definition = recode(definition,
                                "210" = "Foster", 
                                "120" = "Homeless", 

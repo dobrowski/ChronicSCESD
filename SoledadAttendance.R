@@ -3,6 +3,7 @@
 library(tidyverse)
 library(readxl)
 library(here)
+library(lubridate)
 
 
 soledad <- read_xlsx(here("data", "Soledad.xlsx")) %>%
@@ -74,7 +75,7 @@ soledad.joint <- soledad.dates.elem %>%
            
            ) %>%
     filter(!is.na(chronic),
- #       Grade %in% c(-1,0)           # Remeber to delete
+        Grade %in% c(-1,0,7,9)           # Remeber to delete
            )
  
 
@@ -90,8 +91,21 @@ soledad.school <- soledad.joint %>%
 
 
 soledad.do <- soledad.joint %>%
+    
+    group_by(`Student ID`) %>%
+    mutate(absent2 = sum(days.absent),
+           enroll2 = sum(days.enroll.real),
+           absent.rate2 = absent2/enroll2,
+           chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+    ) %>%
+    
     ungroup() %>%
-    transmute(chronic.rate = mean(chronic)) %>%
+    select(`Student ID`, chronic2) %>%
+    distinct() %>%
+
+    
+    ungroup() %>%
+    transmute(chronic.rate = mean(chronic2)) %>%
     distinct() %>%
     mutate(school_name = "District Office"    ,
            district_name = "Soledad",
@@ -127,9 +141,20 @@ soledad.fun <- function(var) {
     
     
     
-    soledad.temp <- soledad.joint %>%
+    soledad.temp <-     soledad.joint %>%
+        group_by(`Student ID`) %>%
+        mutate(absent2 = sum(days.absent),
+               enroll2 = sum(days.enroll.real),
+            absent.rate2 = absent2/enroll2,
+            chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+            ) %>%
+
+        ungroup() %>%
+        select({{var}}, `Student ID`, chronic2) %>%
+        distinct() %>%
+
         group_by(definition = as.character({{var}})) %>%
-        summarise(chronic.rate = mean(chronic),
+        summarise(chronic.rate = mean(chronic2),
                   count_n = n()) %>%
         distinct() %>%
         mutate(# School = str_trim(School),
@@ -137,7 +162,7 @@ soledad.fun <- function(var) {
             school_name = "District Office",
             #      definition = "Over all"
         )
-    
+
     bind_rows(soledad.stu.grp,soledad.temp)
     
 }
@@ -203,7 +228,7 @@ for (sch in soledad.schools) {
 soledad.grps.sch <- soledad.grps.sch %>%
     bind_rows(soledad.grps) %>%
     distinct() %>%
-    filter(count_n >=10,
+    filter(#count_n >=10,
            !is.na(definition)) 
 
 

@@ -295,3 +295,78 @@ graph2023.tk %>%
 
 ggsave(here("output", paste0("Salinas City - TK-K - YTD.png") ), width = 9, height = 6 )
 
+
+soledad.2023 %>%
+    filter(#district_name == "Salinas City",
+           school_name ==  "District Office" 
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = definition,
+                          tit = paste0("Soledad" ," Chronic Absenteeism"), 
+                          subtit = paste0("7th-8th Grade" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("Soledad - 7th-8th grade - YTD.png") ), width = 9, height = 6 )
+
+### SWD by SChool -------
+
+
+
+graph2023.swd %>%
+    filter(district_name == "Alisal Union",
+            definition == "SWD"
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = school_name,
+                          tit = paste0("Alisal" ," Chronic Absenteeism"), 
+                          subtit = paste0("SWD for All Grades" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("Alisal - SWD for All Grades - YTD.png") ), width = 9, height = 6 )
+
+
+
+graph2023.swd %>%
+    filter(district_name == "Soledad",
+           definition == "SPED"
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = school_name,
+                          tit = paste0("Soledad" ," Chronic Absenteeism"), 
+                          subtit = paste0("SPED for TK, K, 7th, and 9th Grades" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("Soledad - SPED for TK, K, 7th, and 9th grades - YTD.png") ), width = 9, height = 6 )
+
+
+
+graph2023.swd %>%
+    filter(district_name == "Salinas City",
+           definition == "SPED"
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = school_name,
+                          tit = paste0("Salinas City" ," Chronic Absenteeism"), 
+                          subtit = paste0("SPED for All Grades" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("Salinas City - SPED for all grades - YTD.png") ), width = 9, height = 6 )
+
+
+
+graph2023.swd %>%
+    filter(district_name == "North Monterey",
+           definition == "SWD"
+    ) %>%
+    chronic_graph_percent(indi = chronic.rate  ,
+                          xxx = school_name,
+                          tit = paste0("North Monterey" ," Chronic Absenteeism"), 
+                          subtit = paste0("SWD for TK through 2nd Grade" ," 2022-23 ")) +
+    labs( caption = "Source: Data exported from SIS")
+
+
+ggsave(here("output", paste0("North Monterey - SWD for TK-2 - YTD.png") ), width = 9, height = 6 )

@@ -153,7 +153,7 @@ scesd.joint <- scesd.chr %>% left_join(scesd.demo2) %>%
                                               str_detect(School, "Virtual") ~ "Salinas City Virtual Academy",
                                               str_detect(School, "Roosevelt") ~ "Roosevelt Elementary",
     ) 
-    ) # %>%
+    )  #%>%
  #   filter(Grade %in% c(-1,0)) # Remember to Delete
 
 
@@ -171,7 +171,23 @@ scesd.school <- scesd.joint %>%
 
 scesd.do <- scesd.joint %>%
     ungroup() %>%
-    transmute(chronic.rate = mean(chronic)) %>%
+    
+    
+    group_by(`Student ID`) %>%
+    mutate(absent2 = sum(Absences),
+           enroll2 = sum(Enrolled),
+           absent.rate2 = absent2/enroll2,
+           chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+    ) %>%
+    
+    ungroup() %>%
+    select( `Student ID`, chronic2) %>%
+    distinct() %>%
+    
+    
+    
+    
+    transmute(chronic.rate = mean(chronic2)) %>%
     distinct() %>%
     mutate(school_name = "District Office"    ,
            district_name = "Salinas City",
@@ -208,8 +224,22 @@ scesd.2023.rev <- scesd.school %>%
                           
                           
                           scesd.temp <- scesd.joint %>%
+                              
+                              
+                              group_by(`Student ID`) %>%
+                              mutate(absent2 = sum(Absences),
+                                     enroll2 = sum(Enrolled),
+                                     absent.rate2 = absent2/enroll2,
+                                     chronic2 = if_else(absent.rate2 >= .1, TRUE, FALSE)
+                              ) %>%
+                              
+                              ungroup() %>%
+                              select({{var}}, `Student ID`, chronic2) %>%
+                              distinct() %>%
+                              
+                              
                               group_by(definition = as.character({{var}})) %>%
-                              summarise(chronic.rate = mean(chronic),
+                              summarise(chronic.rate = mean(chronic2),
                                         count_n = n()) %>%
                               distinct() %>%
                               mutate(# School = str_trim(School),
@@ -282,7 +312,7 @@ scesd.2023.rev <- scesd.school %>%
                       scesd.grps.sch <- scesd.grps.sch %>%
                           bind_rows(scesd.grps) %>%
                           distinct() %>%
-                          filter(count_n >=10,
+                          filter(#count_n >=10,
                                  !is.na(definition),
                                  !str_detect(definition,"TBD")) 
                       
