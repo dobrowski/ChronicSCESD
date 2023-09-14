@@ -222,7 +222,7 @@ con <- mcoe_sql_con()
 
 dash <- tbl(con,"DASH_ALL_2022") %>%
     filter(countyname == "Monterey",
-           rtype == "D",
+   #        rtype == "D",
            indicator == "chronic" 
            ) %>%
     collect()  %>%
@@ -316,3 +316,318 @@ chronic.dash.comp(dist = "soledad.calpads.joint",
 
 chronic.dash.comp(dist = "spreckels.calpads.joint",
     dist.name = "Spreckels")
+
+
+
+
+### School Graphs ---
+
+
+joint.school <- function(df, df.demo, dist.name) {
+    
+
+    df.calpads2 <- df %>%
+        filter(DaysExpectedA >= 1,
+               Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08"   )
+        ) %>%
+        group_by(SSID, StudentName, SchoolName, SchoolCode) %>% #, Ethnicity, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
+        summarise(across(.cols =   c(DaysExpectedA:DaysAbsentCEFG),
+                         ~ sum(.x, na.rm = TRUE)
+        )
+        ) %>%
+        filter(DaysExpectedA >= 31) %>%
+        mutate(AbsenceRate2 = 100*DaysAbsentCEFG/DaysExpectedA,
+               chronic = if_else(AbsenceRate2 >= 10, TRUE, FALSE),
+               dupes = duplicated(SSID))
+    
+    
+    df.calpads.demo2 <- df.demo %>%
+        select(SSID, EthnicityRace, Homeless, StudentswithDisabilities, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
+        distinct() %>%
+        group_by(SSID) %>%
+        mutate(Homeless = if_else(any(Homeless == "Y"), "Yes", "N" ),
+               StudentswithDisabilities = if_else(any(StudentswithDisabilities == "Y"), "Yes", "N" ),
+               EnglishLearner = if_else(any(EnglishLearner == "Y"), "Yes", "N" ),
+               SocioEconomicallyDisadvantaged = if_else(any(SocioEconomicallyDisadvantaged == "Y"), "Yes", "N" ),
+        ) %>%
+        distinct()  %>%
+        mutate(All = "Yes") %>%
+        pivot_wider(names_from = EthnicityRace, values_from = All) %>%
+        mutate(All = "Yes")
+    
+joint <- df.calpads2 %>%
+        left_join(df.calpads.demo2)
+    
+joint
+
+
+}
+
+
+nmcusd.calpads.school.joint <- joint.school(nmcusd.calpads, nmcusd.calpads.demo)
+
+
+car.school <- function(df,students) {
+    
+    ddff <-     deparse(substitute(df)) 
+    studentsss <-     deparse(substitute(students))
+    
+    holder <-  df %>% 
+        ungroup() %>%
+        filter({{students}} == "Yes")  %>%
+        
+        mutate( # dist.standard = ScaleScore - MeetStandard,
+            chronic.rate = 100*mean(chronic),
+            count = n())  %>%
+        select(chronic.rate, count) %>%
+        distinct() %>%
+        mutate(district = ddff,
+               students = studentsss
+        )
+    
+    # sheet_append(ss = sheet,
+    #              sheet = "Distance from Standard Group",
+    #              data = holder )
+    holder
+    
+}
+
+
+add.school.car <- function(df) {
+    
+    namer <- unique(df$SchoolName)
+    coder <- unique(df$SchoolCode)
+    
+    waiting.room <- car.school(df,All) %>%
+        bind_rows(  car.school(df,White) ) %>%
+        bind_rows(  car.school(df,EnglishLearner) ) %>%
+        bind_rows( car.school(df,Asian) )  %>%
+        bind_rows( car.school(df,Filipino) )  %>%
+        bind_rows( car.school(df,Multiple) )  %>%
+        bind_rows( car.school(df,`Black/African Am`) )  %>%
+        bind_rows( car.school(df,`Am Indian/Alskn Nat`) )  %>%
+        bind_rows( car.school(df,`Nat Hwiin/Othr Pac Islndr`) )  %>%
+        bind_rows( car.school(df,Hispanic) )  %>%
+        bind_rows( car.school(df,StudentswithDisabilities) )  %>%
+        bind_rows( car.school(df,SocioEconomicallyDisadvantaged) )  %>%
+        bind_rows( car.school(df,Homeless) ) %>%
+        mutate(SchoolName = namer,
+               SchoolCode = coder
+        )
+    
+    waiting.room
+    
+    
+}
+
+nmcusd.calpads.school.joint %>% 
+    filter(str_detect(SchoolName,"Echo Valley")) %>%
+    add.school.car()
+
+
+holder <- ausd.calpads.school.joint %>%
+    # filter(str_detect(DistrictName,dist.name)) %>%
+    split(.$SchoolName) %>%
+    map_df(~add.school.car(.))  %>%
+     mutate(Group = case_match(students,
+                               "StudentswithDisabilities" ~ "Students with \nDisabilities",
+                               "SocioEconomicallyDisadvantaged" ~ "Socio-Economically \nDisadvantaged",
+                               "Hispanic" ~ "Latino",
+                               "EnglishLearner" ~ "English Learner",
+                               .default = students
+     ))
+
+
+dash.school.chr <- function(cdsCode) {
+    
+    tbl(con,"DASH_ALL_2022") %>%
+        filter(countyname == "Monterey",
+               cds == cdsCode,
+               rtype == "S",
+               indicator == "chronic") %>%
+        collect()  %>%
+        mutate(Group = case_match(studentgroup,
+                                  "HOM" ~ "Homeless",
+                                  "SWD" ~ "Students with \nDisabilities",
+                                  "SED" ~ "Socio-Economically \nDisadvantaged",
+                                  "HI" ~ "Latino",
+                                  "EL" ~ "English Learner",
+                                  "AS" ~ "Asian",
+                                  "FI" ~ "Filipino",
+                                  "WH" ~ "White",
+                                  "ALL" ~ "All",
+                                  .default = studentgroup
+        ))
+    
+}
+
+chron.comp.school <- function(df, dist.code, school.code, limit.case.count = TRUE ) {
+    
+    cds <- paste0("27",dist.code, str_pad(school.code, 7, side="left", pad="0"))
+
+    # ent <- tbl(con,"SCHOOLS") %>%
+    #     filter(
+    #         CDSCode == cds
+    #     ) %>%
+    #     collect()  %>%
+    #     select(EILName) %>%
+    #     simplify()
+    # 
+    # print(ent)
+    # 
+    # 
+    
+    work.group <-   df %>%
+        filter(SchoolCode == school.code #| SchoolCode == as.numeric(str_pad(school.code, 7, side="left", pad="0"))
+        ) %>%
+        filter(if(limit.case.count == TRUE )count >= 30 else count >= 1) %>%
+        ungroup() %>%
+        select(Group) %>%
+        unique() %>%
+        flatten()
+    
+    print(work.group)
+
+    dash2 <- dash.school.chr( cds ) %>%
+        filter(# str_detect(districtname, dist.name),
+            Group %in% work.group
+        ) %>%
+        select(districtname, schoolname ,indicator, currstatus, Group) %>%
+        mutate(EstimatedColor = "Light Gray") %>%
+        rename(chronic.rate = currstatus)
+    
+    print(dash2)
+    
+    
+    df %>%
+        filter(SchoolCode == school.code # | SchoolCode == as.numeric(str_pad(school.code, 7, side="left", pad="0"))
+        ) %>%
+        filter(if(limit.case.count == TRUE )count >= 30 else count >= 1) %>%
+  #      mutate(DFS = as.numeric(DFS)) %>%
+        left_join(dash2, by = c("Group")) %>%
+        mutate(change = chronic.rate.x - chronic.rate.y,
+               EstimatedColor = case_when(
+                   count < 30 ~ "White",
+                   
+                   # All Schools
+                   chronic.rate.x >=20 & change > -0.5 ~ "Red",
+                   chronic.rate.x >=20 & change <= -3.0 ~ "Yellow",
+                   chronic.rate.x >=20 & change <= -0.5 ~ "Orange",
+                   
+                   chronic.rate.x >=10 & change >= 3.0 ~ "Red",
+                   chronic.rate.x >=10 & change <= -0.5 ~ "Yellow", 
+                   chronic.rate.x >=10 & change < 3.0 ~ "Orange", 
+                   
+                   chronic.rate.x >=5 & change > 0.5 ~ "Orange",
+                   chronic.rate.x >=5 & change <= -0.5 ~ "Green",
+                   chronic.rate.x >=5 & change < 0.5 ~ "Yellow",
+
+                   chronic.rate.x >=2.5 & change >= 3.0 ~ "Orange",
+                   chronic.rate.x >=2.5 & change <= -3.0 ~ "Blue",    
+                   chronic.rate.x >=2.5 & change <= 0.5 ~ "Green",    
+                   chronic.rate.x >=2.5 & change < 3.0 ~ "Yellow",    
+                   
+                   chronic.rate.x < 2.5 & change >= 3.0 ~ "Yellow",
+                   chronic.rate.x < 2.5 & change <= 0.5 ~ "Blue",
+                   chronic.rate.x < 2.5 & change  < 3.0 ~ "Green",
+                   
+
+                   
+    #               !is.na(DFS.x) & is.na(DFS.y) ~ "Black",
+                   
+                   TRUE ~ EstimatedColor
+                   
+               ),
+    chronic.rate = chronic.rate.x
+        ) %>%
+        
+        
+        bind_rows(dash2) %>%
+        mutate(EstimatedColor = factor(EstimatedColor),
+               EstimatedColor = fct_relevel(EstimatedColor,"Light Gray" ) )
+    
+    
+    
+    
+}
+
+
+
+test <- chron.comp.school(holder, dist.code = 65961, school.code = 127456)
+
+
+
+chron.comp.school.graph <- function(df) {
+    
+    skul <- df$schoolname[1]
+
+    df %>%
+        ggplot(aes(x = Group, y = chronic.rate)) +
+        geom_col(aes(fill = EstimatedColor,
+                     color = "black"),
+                 position = "dodge2") +
+        mcoe_theme +
+        scale_fill_identity() +
+        scale_color_identity() +
+        labs(y = "Chronic Absenteeism Rate",
+             title = paste0(skul, " Chronic Absenteeism Student Group Results 2023"),
+             subtitle = "Gray is 2022 results and Colored bars are 2023 with the estimated Dashboard color")
+    
+    
+    #    ggsave(here("output",paste0(dist.name, " - ",assessment," CAASPP Student Group Results 2022 and 2023 Comparison ", Sys.Date(),".png")), width = 8, height = 5)
+    
+    
+} 
+
+chron.comp.school(holder, dist.code = 65961, school.code = 127456, limit.case.count = TRUE) %>%
+    chron.comp.school.graph()
+
+
+
+
+chron.all.schools <- function(df, dist.cd) {
+    
+
+holder <- df %>%
+    # filter(str_detect(DistrictName,dist.name)) %>%
+    split(.$SchoolName) %>%
+    map_df(~add.school.car(.))  %>%
+    mutate(Group = case_match(students,
+                              "StudentswithDisabilities" ~ "Students with \nDisabilities",
+                              "SocioEconomicallyDisadvantaged" ~ "Socio-Economically \nDisadvantaged",
+                              "Hispanic" ~ "Latino",
+                              "EnglishLearner" ~ "English Learner",
+                              .default = students
+    ))
+
+
+
+
+
+school.list <- holder$SchoolCode %>% unique()
+
+
+for (i in 1:length(school.list)) {
+    
+    chron.comp.school(df = holder, dist.code = dist.cd, school.code = school.list[i], limit.case.count = TRUE) %>% 
+        chron.comp.school.graph()
+    
+    ggsave(here("output",paste0(school.list[i], " - ","Chronic Absenteeism Student Group Results 2022 and 2023 Comparison ", Sys.Date(),".png")), width = 8, height = 5)
+    
+}
+
+
+}
+
+
+nmcusd.calpads.school.joint <- joint.school(nmcusd.calpads, nmcusd.calpads.demo)
+chron.all.schools(nmcusd.calpads.school.joint , dist.cd = 73825)
+
+ausd.calpads.school.joint <- joint.school(ausd.calpads, ausd.calpads.demo)
+chron.all.schools(ausd.calpads.school.joint , dist.cd = 65961)
+
+soledad.calpads.school.joint <- joint.school(soledad.calpads, soledad.calpads.demo)
+chron.all.schools(soledad.calpads.school.joint , dist.cd = 75440)
+
+scesd.calpads.school.joint <- joint.school(scesd.calpads, scesd.calpads.demo)
+chron.all.schools(scesd.calpads.school.joint , dist.cd = 66142)
