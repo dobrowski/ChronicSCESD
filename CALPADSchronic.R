@@ -10,6 +10,8 @@ library(googlesheets4)
 library(MCOE)
 
 
+con <- mcoe_sql_con()
+
 sheet <- "https://docs.google.com/spreadsheets/d/1E7x2W-bWkZGenZTPVmlyGSl0LQPfrHc2s8ZLILKUOGw/edit#gid=0"
 
 
@@ -46,9 +48,9 @@ calpads.join <- function(df, df.demo) {
     
     df.calpads2 <- df %>%
         filter(DaysExpectedA >= 1,
-               Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08"   )
+ #              Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08" ,  "1.0","2.0","3.0","4.0","5.0","6.0","7.0","8.0"   )
                ) %>%
-        group_by(SSID, StudentName, Gender, Grade ) %>% #, Ethnicity, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
+        group_by(SSID, StudentName ) %>% #, Ethnicity, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
         summarise(across(.cols =   c(DaysExpectedA:DaysAbsentCEFG),
                          ~ sum(.x, na.rm = TRUE)
         )
@@ -66,6 +68,7 @@ calpads.join <- function(df, df.demo) {
                StudentswithDisabilities = if_else(any(StudentswithDisabilities == "Y"), "Y", "N" ),
                EnglishLearner = if_else(any(EnglishLearner == "Y"), "Y", "N" ),
                SocioEconomicallyDisadvantaged = if_else(any(SocioEconomicallyDisadvantaged == "Y"), "Y", "N" ),
+               All = "Y"
         ) %>%
         distinct() # %>%
     #   mutate(dupes = duplicated(SSID)) 
@@ -91,7 +94,7 @@ chronic.group.rate <- function(df, studentgroup) {
         )
     
     sheet_append(ss = sheet,
-                 sheet = "Chronic Group",
+                 sheet = "Chronic Group with HS",
                  data = holder )
     holder
 
@@ -107,6 +110,7 @@ chronic.group.rate(ausd.calpads.joint, Homeless)
 chronic.group.rate(ausd.calpads.joint, StudentswithDisabilities)
 chronic.group.rate(ausd.calpads.joint, EnglishLearner)
 chronic.group.rate(ausd.calpads.joint, SocioEconomicallyDisadvantaged)
+chronic.group.rate(ausd.calpads.joint, All)
 
 
 
@@ -117,6 +121,7 @@ chronic.group.rate(scesd.calpads.joint, Homeless)
 chronic.group.rate(scesd.calpads.joint, StudentswithDisabilities)
 chronic.group.rate(scesd.calpads.joint, EnglishLearner)
 chronic.group.rate(scesd.calpads.joint, SocioEconomicallyDisadvantaged)
+chronic.group.rate(scesd.calpads.joint, All)
 
 
 
@@ -127,6 +132,7 @@ chronic.group.rate(nmcusd.calpads.joint, Homeless)
 chronic.group.rate(nmcusd.calpads.joint, StudentswithDisabilities)
 chronic.group.rate(nmcusd.calpads.joint, EnglishLearner)
 chronic.group.rate(nmcusd.calpads.joint, SocioEconomicallyDisadvantaged)
+chronic.group.rate(nmcusd.calpads.joint, All)
 
 
 nmcusd.calpads.joint %>%
@@ -149,6 +155,7 @@ chronic.group.rate(soledad.calpads.joint, Homeless)
 chronic.group.rate(soledad.calpads.joint, StudentswithDisabilities)
 chronic.group.rate(soledad.calpads.joint, EnglishLearner)
 chronic.group.rate(soledad.calpads.joint, SocioEconomicallyDisadvantaged)
+chronic.group.rate(soledad.calpads.joint, All)
 
 
 spreckels.calpads.joint <- calpads.join(spreckels.calpads, spreckels.calpads.demo)
@@ -168,6 +175,7 @@ working <- read_sheet(ss = sheet,
            StudentGroup != "Missing",
            NumberStudents >= 30) %>%
     mutate(Group = case_match(StudentGroupCategory,
+                              "All" ~ "All",
                               "Homeless" ~ "Homeless",
                               "StudentswithDisabilities" ~ "Students with \nDisabilities",
                               "SocioEconomicallyDisadvantaged" ~ "Socio-Economically \nDisadvantaged",
@@ -217,7 +225,6 @@ chronic.dash.graph(dist = "spreckels.calpads.joint",
 ### Comparison to prior year ----
 
 
-con <- mcoe_sql_con()
 
 
 dash <- tbl(con,"DASH_ALL_2022") %>%
@@ -238,6 +245,7 @@ dash <- tbl(con,"DASH_ALL_2022") %>%
                               "MR" ~ "Multiple",
                               "AA" ~ "Black/African Am",
                               "AI" ~ "Am Indian/Alskn Nat",
+                              "ALL" ~ "All",
                               .default = studentgroup
     ))
 
@@ -254,6 +262,7 @@ chronic.dash.comp <- function(dist, assessment = "ELA", dist.name ) {
     
     dash2 <- dash %>%
         filter(str_detect(districtname, dist.name),
+               rtype == "D",
                Group %in% work.group
         ) %>%
         select(districtname, indicator, currstatus, Group) %>%
@@ -278,7 +287,7 @@ df <-    working %>%
 
 
 df %>%   
-    mutate(Group = factor(Group, levels = levelss), # Sorts only by the current year
+    mutate(# Group = factor(Group, levels = levelss), # Sorts only by the current year
            EstimatedColor = fct_relevel(EstimatedColor,"Light Gray" ) # Puts gray to the left of color
            ) %>%
     ggplot(aes(x = Group, y = PercentChronicAbsent)) +
@@ -320,7 +329,7 @@ chronic.dash.comp(dist = "spreckels.calpads.joint",
 
 
 
-### School Graphs ---
+### School Graphs ----
 
 
 joint.school <- function(df, df.demo, dist.name) {
@@ -328,9 +337,9 @@ joint.school <- function(df, df.demo, dist.name) {
 
     df.calpads2 <- df %>%
         filter(DaysExpectedA >= 1,
-               Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08"   )
+   #            Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08" ,  "1.0","2.0","3.0","4.0","5.0","6.0","7.0","8.0"   )
         ) %>%
-        group_by(SSID, StudentName, SchoolName, SchoolCode) %>% #, Ethnicity, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
+        group_by(SSID, StudentName, SchoolName, SchoolCode, Grade) %>% #, Ethnicity, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
         summarise(across(.cols =   c(DaysExpectedA:DaysAbsentCEFG),
                          ~ sum(.x, na.rm = TRUE)
         )
@@ -366,6 +375,7 @@ joint
 
 nmcusd.calpads.school.joint <- joint.school(nmcusd.calpads, nmcusd.calpads.demo)
 
+soledad.calpads.school.joint <- joint.school(soledad.calpads, soledad.calpads.demo)
 
 car.school <- function(df,students) {
     
@@ -421,8 +431,20 @@ add.school.car <- function(df) {
 }
 
 nmcusd.calpads.school.joint %>% 
-    filter(str_detect(SchoolName,"Echo Valley")) %>%
+    filter(str_detect(SchoolName,"Elkhorn"),
+           Grade %in% c("KN","1","2"),
+           StudentswithDisabilities == "Yes"
+           ) %>%
     add.school.car()
+
+
+soledad.calpads.school.joint %>% 
+    filter(str_detect(SchoolName,"Main"),
+           Grade %in% c("07", "7"),
+           StudentswithDisabilities == "Yes"
+    ) %>%
+    add.school.car()
+
 
 
 holder <- ausd.calpads.school.joint %>%
@@ -631,3 +653,80 @@ chron.all.schools(soledad.calpads.school.joint , dist.cd = 75440)
 
 scesd.calpads.school.joint <- joint.school(scesd.calpads, scesd.calpads.demo)
 chron.all.schools(scesd.calpads.school.joint , dist.cd = 66142)
+
+
+### High Schools -----
+
+
+
+chron.hs.graph <- function(df, dist.code, school.code, school.name) {
+  
+
+chr.hs.old <- tbl(con,"CHRONIC") %>%
+    filter(#countyname == "Monterey",
+           county_code == 27,
+           district_code == dist.code, # 73825, # 75440
+           school_code == school.code, # 2730034, # 2730190
+           academic_year == max(academic_year)
+           # rtype == "S",
+           # indicator == "chronic"
+           ) %>%
+    collect()  %>%
+    mutate(Group = case_match(reporting_category,
+                              "SH" ~ "Homeless",
+                              "SD" ~ "Students with \nDisabilities",
+                              "SS" ~ "Socio-Economically \nDisadvantaged",
+                              "RH" ~ "Latino",
+                              "SE" ~ "English Learner",
+                              "RA" ~ "Asian",
+                              "RB" ~ "Black/African Am",
+                              
+                              "RF" ~ "Filipino",
+                              "RW" ~ "White",
+                              "TA" ~ "All",
+                              .default = NA
+    ),
+    EstimatedColor = "Light Gray",
+    chronic.rate = chronic_absenteeism_rate)  %>%
+    filter(!is.na( chronic_absenteeism_rate ),
+           !is.na( Group )
+    )
+    
+
+
+
+df %>%
+     filter(
+         SchoolCode == school.code # 2730034, # 2730190
+     ) %>%
+    add.school.car()  %>%
+    mutate(Group = case_match(students,
+                              "StudentswithDisabilities" ~ "Students with \nDisabilities",
+                              "SocioEconomicallyDisadvantaged" ~ "Socio-Economically \nDisadvantaged",
+                              "Hispanic" ~ "Latino",
+                              "EnglishLearner" ~ "English Learner",
+                              .default = students
+    ),
+    EstimatedColor = "Pink") %>%
+    filter(count > 10) %>%
+    bind_rows(chr.hs.old) %>%
+    ggplot(aes(x = Group, y = chronic.rate)) +
+    geom_col(aes(fill = EstimatedColor,
+                 color = "black"),
+             position = "dodge2") +
+    mcoe_theme +
+    scale_fill_identity() +
+    scale_color_identity() +
+    labs(y = "Chronic Absenteeism Rate",
+         title = paste0(school.name, " Chronic Absenteeism Student Group Results 2023"),
+         subtitle = "Gray is 2022 results and Pink is 2023. There are no Dashboard colors for High School.")
+
+
+    ggsave(here("output",paste0(school.name, " - ","Chronic Absenteeism Student Group Results 2022 and 2023 Comparison ", Sys.Date(),".png")), width = 8, height = 5)
+ 
+    
+}
+
+chron.hs.graph(nmcusd.calpads.school.joint, 73825, 2730034, "North Monterey High" )
+
+chron.hs.graph(soledad.calpads.school.joint, 75440, 6026686, "Soledad High" )
