@@ -7,6 +7,42 @@ library(ggrepel)
 library(MCOE)
 library(ggtext)
 
+chronic.dq <- vroom::vroom(here("data","chronicabsenteeism23.txt"), .name_repair = ~ janitor::make_clean_names(., case = "snake")) %>%
+    mutate(district_code = as.character( district_code),
+           chronic_absenteeism_count = as.numeric(chronic_absenteeism_count),
+           chronic_absenteeism_rate = as.numeric(chronic_absenteeism_rate),
+           chronic_absenteeism_eligible_cumulative_enrollment = as.numeric(chronic_absenteeism_eligible_cumulative_enrollment)
+       )
+
+chronic.22.23 <- chronic.dq %>%
+    filter(str_detect( district_name, "North Monterey|Alisal|Soledad|Salinas City"),
+           reporting_category == "TA",
+           aggregate_level == "D",
+           charter_school == "No",
+           dass == "All")
+
+
+chronic.all <- tbl(con,"CHRONIC") %>%
+    filter(academic_year == max(academic_year) ,
+           county_code == "27",
+           charter_yn == "No",
+           #            district_name == "Salinas City Elementary"
+    ) %>%
+    collect()  %>%
+    left_join_codebook("CHRONIC","reporting_category") %>%
+    mutate(rate = chronic_absenteeism_rate)
+
+chronic.21.22 <- chronic.all %>%
+    filter(str_detect( district_name, "North Monterey|Alisal|Soledad|Salinas City"),
+           reporting_category == "TA",
+           aggregate_level == "D",
+          charter_school == "No")
+
+
+rpp.report.dq <- bind_rows( chronic.21.22, chronic.22.23)
+
+
+
 rpp.report <- tribble(~geo,~rate,~year, ~colored,
                       # "California",12.0 , 2019, "light gray",
                       # "Monterey County",11.2 ,2019, "light gray",
@@ -155,8 +191,9 @@ rpp.report %>%
 ggsave(here("output",paste0("All four slope ", Sys.Date(),".png")), width = 8, height = 6)    
 
     
-### Overlapping bars
+### Overlapping bars -----
 
+#Dashboard version-
 rpp.report %>%
 ggplot(mapping = aes(x = fct_rev(as.character(geo)),
                      y = rate/100,
@@ -187,7 +224,182 @@ ggplot(mapping = aes(x = fct_rev(as.character(geo)),
 ggsave(here("output",paste0("All four overlap ", Sys.Date(),".png")), width = 7, height = 5)    
 
 
-22.8/33.1
-28/43.4
-27.1/37.9
-28.1/35.4
+
+#Dataquest version-
+rpp.report.dq %>%
+    ggplot(mapping = aes(x = fct_rev(as.character(district_name)),
+                         y = chronic_absenteeism_rate/100,
+                         label = scales::percent(chronic_absenteeism_rate/100, accuracy = .1))) +
+    geom_col(data =  rpp.report.dq[rpp.report.dq$academic_year == "2021-22",], 
+             fill = "#DDA63A",
+             width = 0.75,
+    ) +
+    geom_col(data = rpp.report.dq[rpp.report.dq$academic_year == "2022-23",], 
+             #         position = "dodge" ,
+             width = 0.5,
+             fill = "#6C9BA6") + 
+    geom_text(nudge_y = -.02 ) +
+    coord_flip() + 
+    mcoe_theme + 
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    
+    labs(title = "Chronic Absenteeism Decreased in All Participating Districts<br><span style='color: #6C9BA6;'>Blue is 2022-23</span> and <span style='color: #DDA63A;'>Yellow is 2021-22</span>",
+         y = "",
+         x = "",
+         caption = "Source: DataQuest Research Files"
+    ) +
+    theme(
+        plot.title = element_markdown(size =18),
+        axis.text.y = element_text(size =13)
+    )
+
+ggsave(here("output",paste0("All four overlap ", Sys.Date(),".png")), width = 7, height = 5)    
+
+
+### Dataquest student groups ---
+
+temp <- chronic.dq %>%
+    filter(str_detect( district_name, "North Monterey|Alisal|Soledad|Salinas City"),
+       #    reporting_category == "TA",
+        #   aggregate_level == "D",
+           charter_school == "No",
+           dass == "All")
+
+
+
+
+### State and County Comparisons
+chronic.19 <- tbl(con,"CHRONIC") %>%
+    filter(academic_year %in% c("2018-19") ,
+           county_code %in% c("00","27"),
+           aggregate_level %in% c("T","C","D"),
+           #    charter_yn == "No",
+           #            district_name == "Salinas City Elementary"
+    ) %>%
+    collect() 
+
+
+
+chronic.dq <- tbl(con,"CHRONIC") %>%
+    filter(academic_year %in% c("2018-19","2020-21", "2021-22","2022-23") ,
+           county_code %in% c("00","27"),
+           aggregate_level %in% c("T","C","D"),
+       #    charter_yn == "No",
+           #            district_name == "Salinas City Elementary"
+    ) %>%
+    collect()  %>%
+    left_join_codebook("CHRONIC","reporting_category") %>%
+    mutate(rate = chronic_absenteeism_rate)
+
+
+mry.state <- chronic.dq %>%
+    filter(charter_yn == "All",
+           dass == "All"|is.na(dass),
+           aggregate_level %in% c("T","C"),
+    ) %>%
+    mutate(def.geo = paste0(definition," - ",county_name))
+
+
+facet.state.comp <- function(subby, namer) {
+    
+
+
+mry.state %>%
+    mutate(definition = fct_relevel(definition, "Kindergarten", after = 0 )) %>%
+    filter(str_starts(reporting_category, subby)) %>%
+    ggplot(aes(x = academic_year, y = chronic_absenteeism_rate, group = county_name ,color = county_name)) +
+    geom_line() +
+    geom_line(size = 1.5) +
+    geom_point(size = 3) + 
+    facet_wrap(~definition) +
+    mcoe_theme +
+    scale_color_few() +
+    ylim(0,30) +    
+    guides(color = guide_legend(""))
+
+
+ggsave(here("output",paste0("Monterey and State ", namer," " ,Sys.Date(),".png")), width = 8, height = 4.5)    
+
+}
+
+facet.state.comp("GR", "Grade")
+
+facet.state.comp("R", "Race")
+
+facet.state.comp("S", "Group")
+
+facet.state.comp("T", "Overall")
+
+
+
+
+
+mry.state %>%
+  #  mutate(definition = fct_relevel(definition, "Kindergarten", after = 0 )) %>%
+    filter(str_starts(reporting_category, "T")) %>%
+    ggplot(aes(x = academic_year, y = chronic_absenteeism_rate/100, group = county_name ,color = county_name,
+               label = scales::percent(chronic_absenteeism_rate/100, digits = 1))) +
+    geom_line(size = 1.5) +
+    geom_point(size = 3 ) + 
+    geom_text_repel(color = "gray40") +
+    # facet_wrap(~definition) +
+    mcoe_theme +
+    scale_color_few() +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0,.35)) +
+ #   ylim(0,35) +    
+    guides(color = guide_legend("")) +
+    labs(title = "Monterey County and California Chronic Absenteeism Rates")
+
+
+ggsave(here("output",paste0("Monterey and State ", "All Students"," " ,Sys.Date(),".png")), width = 8, height = 4.5)    
+
+
+#### Biggest changes in Monterey County -----
+library(ggtext)
+
+chronic.change <- chronic.dq %>% 
+    filter(aggregate_level %in% c("D","C"), 
+           reporting_category == "TA",
+           dass == "All"|is.na(dass),
+           charter_school == "No"
+           ) %>%
+    select(district_name, academic_year, rate) %>%
+    pivot_wider(names_from = academic_year,
+                values_from = rate) %>%
+    mutate(change = `2021-22` - `2022-23`,
+           district_name = if_else(is.na(district_name),"Monterey County", district_name),
+           kular = case_when(
+               str_detect(district_name,"Alisal|North|Soledad|Salinas City") ~ "#DDA63A",
+               district_name == "Monterey County" ~ "gray30",
+               TRUE ~ "#6C9BA6"),
+           district_kular = paste0("<span style=\"color: ", kular, "\">", district_name, "</span>")
+)
+
+
+ggplot2::ggplot(chronic.change, aes( y = change,
+                         x =forcats::fct_reorder(district_kular,change) ,
+                         label = round2(change,1))
+                ) +
+    geom_segment( aes(x=forcats::fct_reorder(district_kular, change),
+                      xend=forcats::fct_reorder(district_kular, change),
+                      y=0,
+                      yend=change,
+                  color=kular),
+                  size =2 ) +
+    geom_point( aes(color=kular), size=5, alpha=0.6) +
+    coord_flip() +
+    geom_text(size = 3, color = "black") +
+    scale_color_identity()+
+ #   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    #  facet_grid(facets = vars(`Student Group`), scales = "free" ) +
+    theme_hc() +
+    mcoe_theme +
+    theme(axis.text.y = element_markdown()
+          ) +
+    labs(title = "RPP Districts among the most improved on Chronic Absenteeism",
+         subtitle = "Number of percentage points decreased from 2021-22 to 2022-23",
+         source = "Source: DataQuest Research Files, https://www.cde.ca.gov/ds/ad/filesabd.asp, excluding charters")
+
+
+
+ggsave(here("output",paste0("RPP Change  " ,Sys.Date(),".png")), width = 8, height = 4.5)    

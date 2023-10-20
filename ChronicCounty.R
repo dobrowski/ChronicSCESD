@@ -5,7 +5,7 @@
 chronic.all <- tbl(con,"CHRONIC") %>%
     filter(academic_year == max(academic_year) ,
            county_code == "27",
-           charter_yn == "No",
+     #      charter_school == "All",
            #            district_name == "Salinas City Elementary"
     ) %>%
     collect()  %>%
@@ -17,8 +17,8 @@ chronic.all <- tbl(con,"CHRONIC") %>%
 absent.all <- tbl(con,"ABSENT") %>%
     filter(academic_year == max(academic_year) ,
            county_code == "27",
-           charter_school == "No",
-           dass == "No",
+ #          charter_school == "All",
+ #          dass == "No",
            #       district_name == "Salinas City Elementary"
     ) %>%
     collect()  %>%
@@ -91,7 +91,7 @@ chronic_graph_percent <- function(df, indi = rate  , xxx, tit, subtit) {
 ### Chronic Absenteeism Graphs ----
 
 
-chronic.student.group <- function(df, dist) {
+chronic.student.group <- function(df, dist, yr = "2022-23") {
     
     
     df %>%
@@ -101,22 +101,22 @@ chronic.student.group <- function(df, dist) {
         chronic_graph_percent(definition, 
                               indi = rate/100 ,
                               tit = "Percent Chronically Absent by Student Group",
-                              subtit = paste0(dist, " - 2021-22")) 
+                              subtit = paste0(dist, " - ", yr)) 
     
     
-    ggsave(here("output", paste0(dist, " - District Level - Chronic by Student Group.png") ), width = 9, height = 4.5 )
+    ggsave(here("output", paste0(dist, " - District Level - Chronic by Student Group.png") ), width = 8, height = 4.5 )
     
 }
 
 
 
-### Using Average Days Absent from Absent REason table -----
+### Using Average Days Absent from Absent Reason table -----
 
 
 
 
 
-absent.student.group <- function(df, dist) {
+absent.student.group <- function(df, dist, yr = "2022-23") {
     
     df %>%
         filter(!is.na(average_days_absent),
@@ -125,13 +125,62 @@ absent.student.group <- function(df, dist) {
         chronic_graph(definition,
                       indi = average_days_absent,
                       tit = "Average Days Absent by Student Group for the School Year",
-                      subtit = paste0(dist, " - 2021-22"))
+                      subtit = paste0(dist, " - ", yr))
     
-    ggsave(here("output", paste0(dist, " - District Level - Absent by Student Group.png") ), width = 9, height = 4.5  )
+    ggsave(here("output", paste0(dist, " - District Level - Absent by Student Group.png") ), width = 8, height = 4.5  )
     
 }
 
 
+
+chronic.all %>%
+    filter(aggregate_level == "C",
+           dass == "All",
+           charter_school == "All",
+           !str_detect(definition,"eport")
+           ) %>%
+    chronic.student.group("Monterey County")
+
+absent.all %>%
+    filter(aggregate_level == "C",
+           dass == "All",
+           charter_school == "All",
+           !str_detect(definition,"eport")
+           
+    ) %>%
+    absent.student.group("Monterey County")
+
+
+### For all Districts Graph creation -------
+
+districts <- chronic.all$district_name %>% unique()
+
+for (i in districts) {
+    
+    
+    
+    chronic.all %>%
+        filter(
+            str_detect(district_name,i) ,
+                aggregate_level == "D",
+            charter_school == "No",
+               dass == "All",
+               !str_detect(definition,"eport")
+        ) %>%
+        chronic.student.group(i)
+    
+    absent.all %>%
+        filter(
+            str_detect(district_name,i) ,
+            aggregate_level == "D",
+            charter_school == "No",
+            dass == "All",
+            !str_detect(definition,"eport")
+               
+        ) %>%
+        absent.student.group(i)
+    
+}
 
 
 
@@ -139,7 +188,7 @@ absent.student.group <- function(df, dist) {
 
 
 
-absence.reason.group <- function(df, dist) {
+absence.reason.group <- function(df, dist, yr) {
     
     
 df %>%
@@ -170,7 +219,7 @@ df %>%
         mcoe_theme +
         coord_flip() + 
         labs(title = "Reasons for Absences by Student Group",
-             subtitle = paste0(dist, " - 2021-22") ,
+             subtitle = paste0(dist, " - ",yr) ,
              caption = "Source: https://www.cde.ca.gov/ds/ad/filesabr.asp") +
         scale_y_continuous(
             labels = label_percent(),
@@ -184,36 +233,32 @@ df %>%
 }  
 
 
-
-
-
-
-
-chronic.student.group(chronic, "Monterey County")
-
-absent.student.group(absent, "Monterey County")
-
 absent %>% 
     filter(!str_detect(definition,"Grade|Kind|Did|Islander")) %>%
 absence.reason.group( "Monterey County")
 
 
 
-
+### Countywide by District ----
 
 
 chronic.all %>%
     filter(
                     aggregate_level == "D",
                     reporting_category == "TA",
-        !is.na(rate)) %>%
+                    dass == "All",
+                    charter_school == "No",
+                    !str_detect(definition,"eport")
+                    
+  #      !is.na(rate)
+        ) %>%
     chronic_graph_percent(district_name, 
                           indi = rate/100 ,
                           tit = "Percent Chronically Absent by District",
-                          subtit = paste0("Monterey County", " - 2021-22")) 
+                          subtit = paste0("Monterey County", " - 2022-23")) 
 
 
-ggsave(here("output", paste0("Monterey County - Chronic by Student Group.png") ), width = 9, height = 4.5 )
+ggsave(here("output", paste0("Monterey County - Chronic by District.png") ), width = 8, height = 4.5 )
 
 
 
@@ -222,19 +267,84 @@ absent.all %>%
     filter(
         aggregate_level == "D",
         reporting_category == "TA",
-        !is.na(average_days_absent)) %>%
+        dass == "All",
+        charter_school == "No",
+        !str_detect(definition,"eport")
+        
+ #       !is.na(average_days_absent)
+        ) %>%
     chronic_graph(district_name,
                   indi = average_days_absent,
                   tit = "Average Days Absent by District for the School Year",
-                  subtit = paste0("Monterey County", " - 2021-22"))
+                  subtit = paste0("Monterey County", " - 2022-23"))
  
 
 
-ggsave(here("output", paste0("Monterey County - Absent by District.png") ), width = 9, height = 5 )
+ggsave(here("output", paste0("Monterey County - Absent by District.png") ), width = 8, height = 4.5 )
 
 
 
-### YTD with select grades 
+### All Schools in a District -----
+
+
+schools.in.dist <- function(dist, yr = "2022-23") {
+    
+
+chronic.all %>%
+    filter(
+        str_detect(district_name, dist),
+        aggregate_level == "S",
+        reporting_category == "TA",
+        charter_school == "No",
+  #      dass == "All",
+   #     !str_detect(definition,"eport")
+        
+              !is.na(rate)
+    ) %>%
+    chronic_graph_percent(school_name, 
+                          indi = rate/100 ,
+                          tit = "Percent Chronically Absent by School",
+                          subtit = paste0(dist, " - ",yr)) 
+
+
+ggsave(here("output", paste0(dist, " - Chronic by School.png") ), width = 8, height = 4.5 )
+
+
+absent.all %>%
+    filter(
+        str_detect(district_name, dist),
+        aggregate_level == "S",
+        
+        reporting_category == "TA",
+        charter_school == "No",
+   #     dass == "All",
+   #     !str_detect(definition,"eport")
+        
+               !is.na(average_days_absent)
+    ) %>%
+    chronic_graph(school_name,
+                  indi = average_days_absent,
+                  tit = "Average Days Absent by School for the School Year",
+                  subtit = paste0(dist, " - ", yr))
+
+
+
+ggsave(here("output", paste0(dist," - Absent by School.png") ), width = 8, height = 4.5 )
+
+}
+
+
+schools.in.dist("Carmel")
+
+
+for (i in districts) {
+    
+    schools.in.dist(i)
+}
+
+
+
+### YTD with select grades ------
 
 # Using the invidual records from 
 
