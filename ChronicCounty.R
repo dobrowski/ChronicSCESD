@@ -98,7 +98,9 @@ chronic.student.group <- function(df, dist, yr = "2022-23") {
         filter(
 #            aggregate_level == "D",
                !is.na(rate)) %>%
-        chronic_graph_percent(definition, 
+        mutate(subgroup.n = paste0(definition," (",chronic_absenteeism_eligible_cumulative_enrollment,")" )) %>%
+        
+        chronic_graph_percent(subgroup.n, 
                               indi = rate/100 ,
                               tit = "Percent Chronically Absent by Student Group",
                               subtit = paste0(dist, " - ", yr)) 
@@ -122,7 +124,9 @@ absent.student.group <- function(df, dist, yr = "2022-23") {
         filter(!is.na(average_days_absent),
  #              aggregate_level == "D"
                ) %>%
-        chronic_graph(definition,
+        mutate(subgroup.n = paste0(definition," (",eligible_cumulative_enrollment,")" )) %>%
+        
+        chronic_graph(subgroup.n,
                       indi = average_days_absent,
                       tit = "Average Days Absent by Student Group for the School Year",
                       subtit = paste0(dist, " - ", yr))
@@ -181,6 +185,135 @@ for (i in districts) {
         absent.student.group(i)
     
 }
+
+
+
+
+### For all Charter Graph creation -------
+
+charters <- chronic.all %>%
+    filter(charter_school == "Yes") %>%
+    select(school_name) %>%
+    unique() %>% 
+    unlist()
+
+for (i in charters) {
+    
+    
+    
+    chronic.all %>%
+        filter(
+            str_detect(school_name,i) ,
+            aggregate_level == "S",
+            charter_school == "Yes",
+            # dass == "All",
+            # !str_detect(definition,"eport")
+        ) %>%
+        chronic.student.group(i)
+    
+    absent.all %>%
+        filter(
+            str_detect(school_name,i) ,
+            aggregate_level == "S",
+            charter_school == "Yes",
+            # dass == "All",
+            # !str_detect(definition,"eport")
+            
+        ) %>%
+        absent.student.group(i)
+    
+}
+
+
+
+### Monterey among CA Counties ----
+
+
+chronic.counties <- tbl(con,"CHRONIC") %>%
+    filter(academic_year >= "2021-22" ,
+           aggregate_level == "C",
+           charter_school == "All",
+           dass == "All",
+           reporting_category == "TA"
+           #            district_name == "Salinas City Elementary"
+    ) %>%
+    collect()  %>%
+    left_join_codebook("CHRONIC","reporting_category") %>%
+    mutate(rate = chronic_absenteeism_rate)
+
+
+chronic.counties <- chronic.counties %>%
+    mutate(kular = if_else(str_detect(county_name,"Monterey"), "#DDA63A", "#6C9BA6"),
+county_kular = paste0("<span style=\"color: ", kular, "\">", county_name, "</span>")
+) 
+
+
+chronic.counties %>%
+    filter(academic_year == max(academic_year)) %>%
+ggplot(       aes( y = rate/100, x =fct_reorder(county_kular, rate/100) ,  label = percent( rate/100, accuracy = .1) )) +
+    geom_segment( aes(x=fct_reorder(county_kular,rate/100), xend=fct_reorder(county_kular, rate/100), y=0, yend=rate/100,
+                  color=kular),
+                  size =1 ) +
+    geom_point( aes(color=kular), size=3, alpha=0.6) +
+    coord_flip() +
+    geom_text(size = 1.5, color = "black") +
+    scale_color_identity()+
+    theme_hc() +
+    mcoe_theme +
+    theme(axis.text.y = element_markdown(size = 5)
+    ) +
+    labs(x = "",
+         y = "",
+         color ="",
+         title = "Monterey County has the 15th lowest Chronic Absenteeism Rate for 2022-23", 
+         subtitle = "Based on all California Counties including charter and alternative schools",
+         caption = "Source: https://www.cde.ca.gov/ds/ad/filesabd.asp") +
+    scale_y_continuous(
+        labels = label_percent(),
+        expand = expansion(c(0.1, 0.1))
+    )
+
+
+ggsave(here("output",paste0("Monterey Among the Counties  " ,Sys.Date(),".png")), width = 8, height = 4.5)  
+
+
+
+chronic.counties.change <- chronic.counties %>%
+    select(county_kular, kular ,academic_year, rate) %>%
+    pivot_wider(names_from = academic_year,
+                values_from = rate) %>%
+    mutate(change = `2021-22` - `2022-23`)   
+    
+    
+
+ggplot2::ggplot(chronic.counties.change, aes( y = change,
+                                     x =forcats::fct_reorder(county_kular,change) ,
+                                     label = round2(change,1))
+) +
+    geom_segment( aes(x=forcats::fct_reorder(county_kular, change),
+                      xend=forcats::fct_reorder(county_kular, change),
+                      y=0,
+                      yend=change,
+                      color=kular),
+                  size =2 ) +
+    geom_point( aes(color=kular), size=5, alpha=0.6) +
+    coord_flip() +
+    geom_text(size = 3, color = "black") +
+    scale_color_identity()+
+    #   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    #  facet_grid(facets = vars(`Student Group`), scales = "free" ) +
+    theme_hc() +
+    mcoe_theme +
+    theme(axis.text.y = element_markdown()
+    ) +
+    labs(title = "RPP Districts among the most improved on Chronic Absenteeism",
+         subtitle = "Number of percentage points decreased from 2021-22 to 2022-23",
+         source = "Source: DataQuest Research Files, https://www.cde.ca.gov/ds/ad/filesabd.asp, excluding charters")
+
+
+
+ggsave(here("output",paste0("RPP Change  " ,Sys.Date(),".png")), width = 8, height = 4.5)    
+
 
 
 

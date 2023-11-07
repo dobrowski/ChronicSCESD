@@ -403,3 +403,38 @@ ggplot2::ggplot(chronic.change, aes( y = change,
 
 
 ggsave(here("output",paste0("RPP Change  " ,Sys.Date(),".png")), width = 8, height = 4.5)    
+
+
+
+ggplot2::ggplot(chronic.change, aes( y = change,
+                                     x =forcats::fct_reorder(district_name,change) ,
+                                     label = round2(change,1))
+) +
+    geom_segment( aes(x=forcats::fct_reorder(district_name, change),
+                      xend=forcats::fct_reorder(district_name, change),
+                      y=0,
+                      yend=change,
+                   #   color=kular
+                      ),
+                  color = "grey70",
+                  size =2 ) +
+    geom_point( # aes(color=kular),
+        color = "grey70",
+        
+                size=5, alpha=0.6) +
+    coord_flip() +
+    geom_text(size = 3, color = "black") +
+#    scale_color_identity()+
+    #   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    #  facet_grid(facets = vars(`Student Group`), scales = "free" ) +
+    theme_hc() +
+    mcoe_theme +
+    theme(axis.text.y = element_markdown()
+    ) +
+    labs(title = "Change in Chronic Absenteeism Rates",
+         subtitle = "Number of percentage points decreased from 2021-22 to 2022-23",
+         source = "Source: DataQuest Research Files, https://www.cde.ca.gov/ds/ad/filesabd.asp, excluding charters")
+
+
+
+ggsave(here("output",paste0("RPP Change Single Color " ,Sys.Date(),".png")), width = 8, height = 4.5)    

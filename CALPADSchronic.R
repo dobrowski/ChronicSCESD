@@ -48,7 +48,7 @@ calpads.join <- function(df, df.demo) {
     
     df.calpads2 <- df %>%
         filter(DaysExpectedA >= 1,
- #              Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08" ,  "1.0","2.0","3.0","4.0","5.0","6.0","7.0","8.0"   )
+               Grade %in% c("KN",1,2,3,4,5,6,7,8,  "01","02","03","04","05","06","07","08" ,  "1.0","2.0","3.0","4.0","5.0","6.0","7.0","8.0"   )
                ) %>%
         group_by(SSID, StudentName ) %>% #, Ethnicity, EnglishLearner, SocioEconomicallyDisadvantaged) %>%
         summarise(across(.cols =   c(DaysExpectedA:DaysAbsentCEFG),
@@ -85,6 +85,7 @@ chronic.group.rate <- function(df, studentgroup) {
     studentsss <-     deparse(substitute(studentgroup))
     
     holder <- df %>%
+        filter(DaysExpectedA >= 31) %>%
         group_by({{studentgroup}}) %>%
         transmute(count = n(),
                   perc.chronic = 100*mean(chronic)) %>%

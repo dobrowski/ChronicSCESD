@@ -8,17 +8,26 @@ sol.susp <- read_excel(here("data","soledad","7.12_IncidentResultsStudentList (1
 
 
 
+somoco.susp <- read_csv(here("data","somoco","susp" ,"7.12_IncidentResultsStudentList.csv"))
+
+somoco.demo <- read_csv(here("data","somoco","susp" ,"8.1_StudentProfileList (1).csv")) %>%
+    rename(EthnicityRace = Ethnicity_Race_Name,
+           SocioEconomicallyDisadvantaged = SocioEconomically)
+
+
+
 susp.df <- function(suspenion.incidences, demographics) {
     
 sol.susp.sum <- suspenion.incidences %>%
-    group_by(SSID, `Student Name`) %>%
-    summarise(days = sum(`Duration Days`)) %>%
+    group_by(SSID) %>%
+    mutate(SSID = as.character(SSID)) %>%
+    summarise(days = sum(`DurationDays`)) %>%
     filter(days >= 0.5) 
 
 
 sol.susp.demo <- demographics %>%
     mutate(SSID = as.character(SSID)) %>%
-    select(SSID, StudentName, EthnicityRace, Homeless:SocioEconomicallyDisadvantaged) %>%
+    select(SSID, EthnicityRace, Homeless:SocioEconomicallyDisadvantaged) %>%
     distinct() %>%
     mutate(Yes = "Y") %>%
     pivot_wider(names_from = EthnicityRace, values_from = Yes, values_fill = "N")
@@ -61,5 +70,16 @@ susp.group.rate(sol.susp.final, Filipino)
 susp.group.rate(sol.susp.final, Hispanic)
 
 
+
+somoco.susp.final <- susp.df(somoco.susp,somoco.demo )
+
+susp.group.rate(somoco.susp.final, Homeless)
+susp.group.rate(somoco.susp.final, Asian)
+susp.group.rate(somoco.susp.final, SocioEconomicallyDisadvantaged)
+susp.group.rate(somoco.susp.final, Special_Education)
+susp.group.rate(somoco.susp.final, White)
+susp.group.rate(somoco.susp.final, limitedenglish)
+susp.group.rate(somoco.susp.final, Filipino)
+susp.group.rate(somoco.susp.final, Hispanic)
 
 
