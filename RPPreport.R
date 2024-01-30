@@ -44,25 +44,25 @@ rpp.report.dq <- bind_rows( chronic.21.22, chronic.22.23)
 
 
 rpp.report <- tribble(~geo,~rate,~year, ~colored,
-                      # "California",12.0 , 2019, "light gray",
-                      # "Monterey County",11.2 ,2019, "light gray",
+                       "California",12.0 , 2019, "light gray",
+                       "Monterey County",11.2 ,2019, "light gray",
                       #  "Salinas City",9.5 , 2019,"light gray",
          #              "North Monterey County",14.4 , 2019,"light gray",
                 #       "Soledad",12.9 , 2019,"light gray",
-                  #    "Alisal",8.2 , 2019,"light gray",
-                      # "California",30.8 , 2022, "#6C9BA6",
-                      # "Monterey County", 28.9 ,2022,"#6C9BA6",
-                       "Salinas City",37.9 , 2022, "#6C9BA6", # 37.9 dash #37.7 dq
-                       "North Monterey County",43.4 , 2022, "#6C9BA6", # 43.4 dash #42.3 dq
-                       "Soledad",35.4 , 2022, "#6C9BA6", # 35.4 dash # 32.4 dq
-                      "Alisal",33.1 , 2022, "#6C9BA6", # 33.1 dash # 32.8 dq
-        "Salinas City",27.1 , 2023, "#DDA63A",
-        "North Monterey County", 28.0 , 2023, "#DDA63A",
-        "Soledad",28.1 , 2023, "#DDA63A",
-        "Alisal",22.8 , 2023, "#DDA63A"
+                      "Alisal",8.2 , 2019,"light gray",
+                       "California",30.8 , 2022, "#6C9BA6",
+                       "Monterey County", 28.9 ,2022,"#6C9BA6",
+                       # "Salinas City",37.9 , 2022, "#6C9BA6", # 37.9 dash #37.7 dq
+                       # "North Monterey County",43.4 , 2022, "#6C9BA6", # 43.4 dash #42.3 dq
+                       # "Soledad",35.4 , 2022, "#6C9BA6", # 35.4 dash # 32.4 dq
+                      "Alisal",32.8 , 2022, "#6C9BA6", # 33.1 dash # 32.8 dq
+        # "Salinas City",27.1 , 2023, "#DDA63A",
+        # "North Monterey County", 28.0 , 2023, "#DDA63A",
+        # "Soledad",28.1 , 2023, "#DDA63A",
+      #  "Alisal",22.8 , 2023, "#DDA63A"
                       ) %>%
     mutate( colored = fct_relevel(colored,"light gray" ),
-            geo = fct_relevel(geo,"Salinas City","Monterey County" )
+            geo = fct_relevel(geo,"Alisal","Monterey County" )
             )
 
 rpp.report %>%
@@ -85,7 +85,7 @@ ggplot(aes(x = geo, y = rate, fill = colored)) +
          title = paste0("Chronic Absenteeism in 2019 and 2022"),
          subtitle = "Gray bars are 2019 and Blue bars are 2022")
 
-ggsave(here("output",paste0("Salinas City RPP Graph 2019 and 2022 Comparison ", Sys.Date(),".png")), width = 6, height = 5)    
+ggsave(here("output",paste0("Alisal RPP Graph 2019 and 2022 Comparison ", Sys.Date(),".png")), width = 6, height = 5)    
 
 
 ### Waffle graph -----
@@ -438,3 +438,33 @@ ggplot2::ggplot(chronic.change, aes( y = change,
 
 
 ggsave(here("output",paste0("RPP Change Single Color " ,Sys.Date(),".png")), width = 8, height = 4.5)    
+
+
+
+#### Dataquest Comparison Tables ----
+
+
+chronic.all <- tbl(con,"CHRONIC") %>%
+    filter(# academic_year == max(academic_year) ,
+           county_code == "27",
+           charter_school == "No",
+           #            district_name == "Salinas City Elementary"
+    ) %>%
+    collect()  %>%
+    left_join_codebook("CHRONIC","reporting_category") %>%
+    mutate(rate = chronic_absenteeism_rate)
+
+rpp.data.table <- chronic.all %>%
+    filter(str_detect( district_name, "North Monterey|Alisal|Soledad|Salinas City"),
+           academic_year %in% c("2021-22","2022-23"),
+#           reporting_category == "TA",
+           aggregate_level == "D",
+           charter_school == "No",
+            dass == "All"
+) %>%
+    select(district_name, academic_year, definition, rate) %>%
+    pivot_wider(names_from = academic_year, values_from = rate) %>%
+    na.omit()
+
+
+clipr::write_clip(rpp.data.table)

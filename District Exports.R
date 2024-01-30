@@ -29,13 +29,25 @@ calendars.23.24v2 <- calendars.23.24 %>%
 
 ## 2023-24 -------
 
-scesd.month.students.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File1_Abs Days 10.30.23.xlsx"),
+
+
+scesd.month.students.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File1_Abs Days 01.22.24.xlsx"),
                                    # sheet = "2023"
                                     ) %>%
     clean_names(case = "snake") %>%
     mutate(year = "2023",
            date = mdy(date)
            )
+
+# Virtual Academy
+scva.month.students.23 <- read_xlsx(here("data","scesd","SCVA Chronic Abs Data File1_Abs Days 01.19.24.xlsx"),
+                                     # sheet = "2023"
+) %>%
+    clean_names(case = "snake") %>%
+    mutate(year = "2023",
+           date = mdy(date)
+    )
+
 
 
 scesd.month.students.22 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File1_Abs Days 2022-23.xlsx"),
@@ -48,16 +60,20 @@ scesd.month.students.22 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data
 
 
 
+scva.month.school.enr.23 <- read_xlsx(here("data","scesd","SCVA Chronic Abs Data File3_Demographics 01.19.24.xlsx"),
+                                       # sheet = "2023"
+)
 
-scesd.month.school.enr.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File3_Demographics 10.30.23.xlsx"),
+scesd.month.school.enr.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File3_Demographics 12.12.23.xlsx"),
                                        # sheet = "2023"
                                        ) %>%
+    bind_rows(scva.month.school.enr.23) %>%
     clean_names(case = "snake") %>%
-    group_by(school) %>%
+ #   group_by(school) %>%
     transmute(enrollment = n()) %>%
     distinct()
 
-scesd.month.students.demo.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File3_Demographics 10.30.23.xlsx"),
+scesd.month.students.demo.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File3_Demographics 12.12.23.xlsx"),
           # sheet = "2023"
 ) %>%
     clean_names(case = "snake")
@@ -130,14 +146,14 @@ scesd.joint <- scesd.chr %>% left_join(scesd.demo2) %>%
 ##### Alisal ---------
 
 ## 2023-24 -------
-ausd.month.students.demo.23 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummary.xlsx"),
+ausd.month.students.demo.23 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummaryDec.xlsx"),
                                     sheet = "2023",
                                     skip = 2 ) %>%
     clean_names(case = "snake") %>%
     mutate(year = "2023",
            student_id = ssid) 
 
-ausd.month.students.22 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummary.xlsx"),
+ausd.month.students.22 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummaryDec.xlsx"),
                                     sheet = "2022",
                                     skip = 2) %>%
     mutate(year = "2022") %>%
@@ -169,7 +185,7 @@ ausd.ADA.schools.step <- tibble(sheet = excel_sheets(here("data","alisal","month
     mutate(
         data = sheet %>% map2(sheet, ~read_xlsx(here("data","alisal","monthly","ADA_ADM by Date.xlsx"),
                                                      sheet = .x,
-                                                     range = "A5:E65") %>% mutate(school = .x) )
+                                                     range = "A5:E85") %>% mutate(school = .x) ) #Update range to cover all dates
     ) %>%
     pull(data) %>%
     bind_rows() %>%
@@ -359,7 +375,10 @@ sol.month.students.demo.22 <- read_xlsx(here("data","soledad","DEMOGRAPHICS.xlsx
 
 
 
-sol.month.student.abs.23 <- read_xlsx(here("data","soledad","monthly","PrintQueryToExcel_20231106_101931_532978a.xlsx"),
+sol.month.student.abs.23 <- read_xlsx(here("data","soledad","monthly",
+                                           "Student Absences Nov Sol.xlsx"
+                                      #     "PrintQueryToExcel_20231106_101931_532978a.xlsx"
+                                           ),
                                      # skip = 1,
                                       #   col_types = "text"
 ) %>%
@@ -528,37 +547,6 @@ ausd.month.student.abs.23 %>%
     graph.run.df( date, school, "Creekside")
 
 
-# temp <- scesd.month.students.23 %>%
-#     mutate(woy = (date)%>% week()) %>%
-#     group_by(woy, school) %>%
-#     transmute(week.start = min((date)),
-#               days.absent = n()) %>%
-#     distinct() %>%
-#     ungroup() %>%
-#     filter(str_detect(school, "Boronda Meadows")) %>% left_join(
-# calendars.23.24v2 %>%
-#     filter(str_detect(District,"scesd"))
-# ) %>%
-#     mutate(weekly.absences.daily.average = days.absent/school.days)
-# 
-# 
-# med.line <- temp %>%
-#     filter(woy != min(woy),
-#            woy != max(woy),
-#            ) %>%
-#     select(weekly.absences.daily.average) %>%
-#     transmute(med.line = median(weekly.absences.daily.average)) %>%
-#     distinct() %>%
-#     unlist()
-# 
-#     temp %>%
-# ggplot( aes(x = week.start, y = weekly.absences.daily.average) ) +
-# geom_point() +
-#         geom_hline(aes(yintercept = med.line)) +
-#         scale_x_date(date_breaks = "2 weeks", date_labels = "%m-%d-%Y"
-#                      ) +
-#         theme_minimal()
-
 
 # Looks at how many school days are in a week and divides the missed days by that.  
     
@@ -618,40 +606,6 @@ ausd.month.student.abs.23 %>%
 # Looks at total students enrolled 
 
 
-
-# temp <- scesd.month.students.23 %>%
-#     mutate(woy = (date)%>% week()) %>%
-#     group_by(woy, school) %>%
-#     transmute(week.start = min((date)),
-#               days.absent = n()) %>%
-#     distinct() %>%
-#     ungroup() %>%
-#     filter(str_detect(school, "Boronda Meadows")) %>% left_join(
-# calendars.23.24v2 %>%
-#     filter(str_detect(District,"scesd"))
-# ) %>%
-#     mutate(weekly.absences.daily.average = days.absent/school.days) %>%
-#     left_join(school.enr.23) %>%
-#     mutate(weekly.ADA = 1- weekly.absences.daily.average/enrollment)
-# 
-# 
-# 
-# med.line <- temp %>%
-#     filter(woy != min(woy),
-#            woy != max(woy),
-#            ) %>%
-#     select(weekly.ADA) %>%
-#     transmute(med.line = median(weekly.ADA)) %>%
-#     distinct() %>%
-#     unlist()
-# 
-#     temp %>%
-# ggplot( aes(x = week.start, y = weekly.ADA) ) +
-# geom_point() +
-#         geom_hline(aes(yintercept = med.line)) +
-#         scale_x_date(date_breaks = "2 weeks", date_labels = "%m-%d-%Y"
-#                      ) +
-#         theme_minimal()
 
 
 
@@ -720,17 +674,59 @@ sol.month.student.abs.23 %>%
     graph.run.dfv3("soledad" , date, school, "Main")
 
 
-
+scesd.month.students.23 <- scesd.month.students.23 %>%
+    filter(date < mdy("1-22-2024"))
 
 for (i in unique(scesd.month.students.23$school)) {
     
     graph.run.dfv3(scesd.month.students.23, "scesd" ,date, school, i)
     
-    ggsave(here("output","ADA",paste0("Salinas City - ",i," ADA by Week", today(),".png")),
+    ggsave(here("output","ADA","SCESD" ,"Nov 2023" ,paste0("Salinas City - ",i," ADA by Week", today(),".png")),
            width = 8,
            height = 4.5)
     
 }
+
+# Salinas City Virtual Academy
+
+
+for (i in unique(scva.month.students.23$school)) {
+    
+    graph.run.dfv3(scva.month.students.23, "scesd" ,date, school, i)
+    
+    ggsave(here("output","ADA","SCESD" ,"Nov 2023" ,paste0("Salinas City - ",i," ADA by Week", today(),".png")),
+           width = 8,
+           height = 4.5)
+    
+}
+
+
+temp <- scesd.month.students.23 %>% 
+    mutate(woy = date%>% week()) %>%
+    group_by(woy, school) %>%
+    transmute(week.start = min(date),
+              days.absent = n()) %>%
+    distinct() %>%
+    ungroup() %>%
+    # filter(str_detect({{school.column}}, school.name)) %>% 
+    left_join(
+        calendars.23.24v2  %>%
+            filter(str_detect(District,"scesd"))
+    ) %>%
+    mutate(weekly.absences.daily.average = days.absent/school.days)%>%
+    left_join(school.enr.23) %>%
+    mutate(weekly.ADA = 1- weekly.absences.daily.average/enrollment)
+
+temp %>% 
+    mutate(weekly.ADA = weekly.ADA * 100) %>%
+    pivot_wider(names_from = school, values_from = weekly.ADA, id_cols = week.start) %>%
+    arrange(week.start)
+
+clipr::write_last_clip()
+
+
+####
+
 
 for (i in unique(nmcusd.month.students.23$school)) {
     
@@ -747,7 +743,7 @@ for (i in unique(sol.month.student.abs.23$school)) {
     
     graph.run.dfv3(sol.month.student.abs.23, "soledad" ,date, school, i, "")
     
-    ggsave(here("output","ADA",paste0("Soledad - ",i," ADA by Week", today(),".png")),
+    ggsave(here("output","ADA", "Soledad", "Nov 2023", paste0("Soledad - ",i," ADA by Week", today(),".png")),
            width = 8,
            height = 4.5)
     
@@ -822,14 +818,13 @@ ADA.graph <- function(df, school.name) {
 }    
    
 
-
 ADA.graph(ausd.ADA.schools, "Creekside")
  
 for (i in unique(ausd.ADA.schools$school)) {
     
     ADA.graph(ausd.ADA.schools, i)
     
-    ggsave(here("output","ADA",paste0("Alisal - ",i," ADA by Week", today(),".png")),
+    ggsave(here("output","ADA","Alisal" ,"2023 Dec" ,paste0("Alisal - ",i," ADA by Week", today(),".png")),
                 width = 8,
                 height = 4.5)
     
@@ -915,13 +910,20 @@ scesd.month.students.23 %>%
 
 # AUSD 
 stud.list <- ausd.month.students.demo.23 %>% 
-    filter(swds == "Y") %>%
+    filter(swds == "Y",
+           str_detect(school_name,"Creekside")
+           ) %>%
     pull(student_id)
 
 
 ausd.month.student.abs.23 %>%
     filter(ssid %in% stud.list ) %>%
-    graph.run.dfv4("alisal" , length(stud.list), "Alisal for SWD")
+    graph.run.dfv4("alisal" , length(stud.list), "Creekside for SWD")
+
+
+
+
+
 
 # NMCUSD
 # TK-3, which is all have data for
@@ -1035,7 +1037,7 @@ scesd.month.students.23 %>%
 
 
 
-
+#. Must update in future,  currently has threshold of 6 absences 
 chronic.rate <- function(df.demo, df.absence, ssid.col) {
     
     stud.list <- df.demo %>% 
@@ -1047,15 +1049,9 @@ chronic.list <- df.absence %>%
         filter({{ssid.col}} %in% stud.list ) %>%
         group_by({{ssid.col}}) %>%
         summarise(missed.count = n()) %>%
-        filter(missed.count >= 6) %>%
+        filter(missed.count >= 6) %>%. #Note Hardcoded for 6 absences for through OCtober. 
         pull({{ssid.col}}) 
 
-# 
-# print(length( stud.list))
-# print(length(chronic.list))
-# 
-#  print(       length(chronic.list)/length(stud.list) )
- 
  tribble(~count, ~chronic, ~rate,
         length( stud.list),length(chronic.list), length(chronic.list)/length(stud.list)  )
     
@@ -1315,7 +1311,8 @@ read_sheet("https://docs.google.com/spreadsheets/d/1SXB3EZa54WrUJ0DoTwB2YLdEzQ_S
         
     labs(title = paste0(dist, " Schools Percent Chronically Absent"),
          subtitle = paste0("As of ", dater )
-    )
+    )+
+        theme(plot.margin = margin(r = 10))
 
 ggsave(here("output","ADA",paste0(dist," " ,yr, " Chronic Absenteeism Rates.png") ) , width = 8, height = 4.5)
 
@@ -1342,7 +1339,8 @@ chronic.rate.graph.sub <- function(dist, yr, dater, layers =1, sub) {
         
         labs(title = paste0(dist," ",sub,  " Students Percent Chronically Absent"),
              subtitle = paste0("As of ", dater )
-        )
+        ) +
+        theme(plot.margin = margin(t = 5,l = 5 , r = 25))
     
     ggsave(here("output","ADA",paste0(dist," ", yr ," ",sub, " Chronic Absenteeism Rates",dater,".png") ) , width = 8, height = 4.5)
     

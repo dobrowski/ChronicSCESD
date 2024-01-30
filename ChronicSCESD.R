@@ -8,6 +8,7 @@ library(scales)
 library(ggthemes)
 library(MCOE)
 library(ggrepel)
+library(ggtext)
 
 
 con <- mcoe_sql_con()
@@ -16,9 +17,14 @@ con <- mcoe_sql_con()
 
 chronic <- tbl(con,"CHRONIC") %>%
      filter(academic_year == max(academic_year) ,
-            county_code == "27",
-            charter_yn == "No",
-            district_name == "Salinas City Elementary"
+      #      county_code == "27",
+            aggregate_level == "D",
+      reporting_category == "TA",
+      charter_school == "No",
+      dass == "All"
+      
+        #    charter_yn == "No",
+       #     district_name == "Salinas City Elementary"
     ) %>%
     collect()  %>%
     left_join_codebook("CHRONIC","reporting_category") %>%

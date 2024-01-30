@@ -53,14 +53,14 @@ soledad.demo <- read_xlsx(here("data", "soledad" ,"DEMOGRAPHICS.xlsx"),
 
 
 
-scesd.dates <- read_xlsx(here("data", "scesd", "SCESD Chronic Abs Data File1_Abs Days.xlsx"),
-                           sheet = "Salinas City 080822_031523",
+scesd.dates <- read_xlsx(here("data", "scesd", "SCESD Chronic Abs Data File1_Abs Days 01.22.24.xlsx"),
+                           sheet = "Salinas City 080923_012224",
                     #       col_types = c("text","numeric","text","text","date","numeric","text","text","text")
                          ) %>%
     mutate(Date = mdy(Date))
 
-scesd.demo2 <- read_xlsx(here("data", "scesd", "SCESD Chronic Abs Data File3_Demographics.xlsx"),
-                         sheet = "SCESD 080822_031523 Demographic",
+scesd.demo2 <- read_xlsx(here("data", "scesd", "SCESD Chronic Abs Data File3_ Demographics 01.22.24.xlsx"),
+                         sheet = "SCESD 080923_012224 Demographic",
                          #       col_types = c("text","numeric","text","text","date","numeric","text","text","text")
 ) 
 
@@ -127,9 +127,9 @@ cal.heat <- function(df, date.col , dist , tit) {
               )
     
     
-    calendR(start_date = min(dat_pr$att.date), # Custom start date
-            end_date = max(dat_pr$att.date) , # "2023-02-28",
-            special.days = dat_pr$perc[1:length(dat_pr$perc)], # Vector of the same length as the number of days of the year
+    calendR( from = min(dat_pr$att.date), # Custom start date
+             to = max(dat_pr$att.date) , # "2023-02-28",
+             special.days = dat_pr$perc[1:length(dat_pr$perc)], # Vector of the same length as the number of days of the year
             gradient = TRUE,      # Set gradient = TRUE to create the heatmap
             special.col = "darkblue", # Color of the gradient for the highest value
             low.col = "white",
@@ -142,7 +142,7 @@ cal.heat <- function(df, date.col , dist , tit) {
     
 }
 
-# NMCUSD 
+### NMCUSD ----
 
 nmcusd.dates %>%
     filter(Grade %in% c("TK","K","1","2")
@@ -182,10 +182,14 @@ nmcusd.dates %>%
 
 
 
-# SCESD
+### SCESD -----
 
-scesd.dates %>%
-    cal.heat(date.col =  Date , "Salinas City" ,"All Students")
+scesd.dates2 <- scesd.dates %>% 
+    filter(Date <= mdy("1-22-2024")) %>%
+    mutate(dated = Date)
+
+scesd.dates2 %>%
+    cal.heat(date.col =  dated , "Salinas City" ,"All Students")
 
 
 scesd.demo2%>%
@@ -209,7 +213,7 @@ scesd.dates %>%
     cal.heat(date.col =  Date , "Salinas City" ,"Boronda DIAS")
 
 
-# Soledad
+### Soledad ----
 
 soledad.dates %>%
     cal.heat(date.col =  Date , "Soledad" ,"All Students")

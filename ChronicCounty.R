@@ -231,7 +231,7 @@ for (i in charters) {
 
 chronic.counties <- tbl(con,"CHRONIC") %>%
     filter(academic_year >= "2021-22" ,
-           aggregate_level == "C",
+           aggregate_level %in% c( "C", "T"),
            charter_school == "All",
            dass == "All",
            reporting_category == "TA"
@@ -243,7 +243,8 @@ chronic.counties <- tbl(con,"CHRONIC") %>%
 
 
 chronic.counties <- chronic.counties %>%
-    mutate(kular = if_else(str_detect(county_name,"Monterey"), "#DDA63A", "#6C9BA6"),
+    mutate(county_name = if_else(str_detect(county_name,"State"), "California", county_name ),
+        kular = if_else(str_detect(county_name,"Monterey"), "#DDA63A", "#6C9BA6"),
 county_kular = paste0("<span style=\"color: ", kular, "\">", county_name, "</span>")
 ) 
 
