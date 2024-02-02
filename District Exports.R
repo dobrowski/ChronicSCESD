@@ -73,7 +73,7 @@ scesd.month.school.enr.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Da
     transmute(enrollment = n()) %>%
     distinct()
 
-scesd.month.students.demo.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File3_Demographics 12.12.23.xlsx"),
+scesd.month.students.demo.23 <- read_xlsx(here("data","scesd","SCESD Chronic Abs Data File3_ Demographics 01.22.24.xlsx"),
           # sheet = "2023"
 ) %>%
     clean_names(case = "snake")
@@ -146,14 +146,14 @@ scesd.joint <- scesd.chr %>% left_join(scesd.demo2) %>%
 ##### Alisal ---------
 
 ## 2023-24 -------
-ausd.month.students.demo.23 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummaryDec.xlsx"),
+ausd.month.students.demo.23 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummaryUptoDate.xlsx"),
                                     sheet = "2023",
                                     skip = 2 ) %>%
     clean_names(case = "snake") %>%
     mutate(year = "2023",
            student_id = ssid) 
 
-ausd.month.students.22 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummaryDec.xlsx"),
+ausd.month.students.22 <- read_xlsx(here("data","alisal","monthly","StudentAbsenceSummaryUptoDate.xlsx"),
                                     sheet = "2022",
                                     skip = 2) %>%
     mutate(year = "2022") %>%
@@ -185,7 +185,7 @@ ausd.ADA.schools.step <- tibble(sheet = excel_sheets(here("data","alisal","month
     mutate(
         data = sheet %>% map2(sheet, ~read_xlsx(here("data","alisal","monthly","ADA_ADM by Date.xlsx"),
                                                      sheet = .x,
-                                                     range = "A5:E85") %>% mutate(school = .x) ) #Update range to cover all dates
+                                                     range = "A5:E104") %>% mutate(school = .x) ) #Update range to cover all dates
     ) %>%
     pull(data) %>%
     bind_rows() %>%
@@ -204,6 +204,33 @@ ausd.ADA.schools <- ausd.ADA.schools.step %>%
            ) %>%
     distinct()
     
+
+ausd.ADA.schools.step.SWD <- tibble(sheet = excel_sheets(here("data","alisal","monthly","ADA_ADM by DateSWDS.xlsx"))) %>%
+    mutate(
+        data = sheet %>% map2(sheet, ~read_xlsx(here("data","alisal","monthly","ADA_ADM by DateSWDS.xlsx"),
+                                                sheet = .x,
+                                                range = "A5:E104") %>% mutate(school = .x) ) #Update range to cover all dates
+    ) %>%
+    pull(data) %>%
+    bind_rows() %>%
+    clean_names(case = "snake") %>%
+    select(school:attendance)
+
+ausd.ADA.schools.SWD <- ausd.ADA.schools.step %>%
+    select(-number, -day) %>% 
+    mutate(woy = mdy(date)%>% week(),
+           membership = membership %>% str_trim() %>% as.numeric()
+    ) %>%
+    group_by(woy, school) %>%
+    transmute(week.start = min(mdy(date)),
+              weekly.mem = sum(membership),
+              weekly.att = sum(attendance),
+              weekly.ADA = weekly.att/weekly.mem
+    ) %>%
+    distinct()
+
+
+
 
 
 
@@ -269,7 +296,7 @@ nmcusd.month.students.demo.22 <- read_xlsx(here("data","nmcusd","NMCUSD Student 
 
 
 
-nmcusd.ADA.schools <- read_xlsx((here("data","nmcusd","02b) NMCUSD Weekly Student Attendance_Chronic Absenteeism Project_MCOE File.xlsx"))) %>%
+nmcusd.ADA.schools <- read_xlsx((here("data","nmcusd","02b) NMCUSD Weekly Student Attendance_Chronic Absenteeism Project_MCOE File (1).xlsx"))) %>%
     clean_names(case = "snake") %>%
     mutate(week.start = str_sub(dates,1,10), 
                woy = mdy(week.start)%>% week(),
@@ -306,11 +333,11 @@ nmcusd.month.school.enr.23 <- read_xlsx(here("data","nmcusd","NMCUSD Student Att
 ## 2023-24 -------
 
 
-sol.sch.chr.23 <- read_sheet("https://docs.google.com/spreadsheets/d/1SXB3EZa54WrUJ0DoTwB2YLdEzQ_SOHX892w2hmsMgYY/edit#gid=0")
+# sol.sch.chr.23 <- read_sheet("https://docs.google.com/spreadsheets/d/1SXB3EZa54WrUJ0DoTwB2YLdEzQ_SOHX892w2hmsMgYY/edit#gid=0")
 
 
 
-soledad.month.students.23 <- read_xlsx(here("data","soledad","SUSD ChronicAbsenteeism11.1.xlsx"),
+soledad.month.students.23 <- read_xlsx(here("data","soledad","monthly" ,"SUSD ChronicAbsenteeism11.1.xlsx"),
                                  #     sheet = "Student Daily Absence Details"
                                       ) %>%
     clean_names(case = "snake")
@@ -320,7 +347,7 @@ soledad.month.students.23 <- read_xlsx(here("data","soledad","SUSD ChronicAbsent
 
 #
 
-sol.month.students.demo.23 <- read_xlsx(here("data","soledad","monthly","PrintQueryToExcel_20231106_101837_949452b.xlsx"),
+sol.month.students.demo.23 <- read_xlsx(here("data","soledad","monthly","Demographics Dec.xlsx"),
                                          # sheet = "2023",
                                          # skip = 2 
                                          ) %>%
@@ -376,7 +403,7 @@ sol.month.students.demo.22 <- read_xlsx(here("data","soledad","DEMOGRAPHICS.xlsx
 
 
 sol.month.student.abs.23 <- read_xlsx(here("data","soledad","monthly",
-                                           "Student Absences Nov Sol.xlsx"
+                                           "Daily Attendance Dec.xlsx"
                                       #     "PrintQueryToExcel_20231106_101931_532978a.xlsx"
                                            ),
                                      # skip = 1,
@@ -385,7 +412,7 @@ sol.month.student.abs.23 <- read_xlsx(here("data","soledad","monthly",
     clean_names(case = "snake") %>%
     mutate(date = mdy(date)
            ) %>%
-    filter(date < ymd("2023-10-29"))%>%
+    filter(date < ymd("2024-01-13"))%>% # Update to current date
     mutate(school = as.character(school)) %>%
     mutate(
         school_name = recode(school,
@@ -643,8 +670,9 @@ graph.run.dfv3 <- function(df, dist ,date.column, school.column, school.name, no
                    color = "#6C9BA6") +
         geom_richtext(fill = NA, label.color = NA, label = "<span style = 'color:#DDA63A;'>Median</span>", 
                       aes(x = mdy("8/6/2023"), y = med.line, hjust = 0, vjust = 0)) +
-        scale_x_date(date_breaks = "2 weeks", date_labels = "%m-%d-%Y"
-        ) +
+        scale_x_date(date_breaks = "2 weeks",
+                     date_labels = "%m-%d-%Y",
+                     guide = guide_axis(n.dodge = 2)) +
         scale_y_continuous(labels = scales::percent) +
         theme_minimal() +
         labs(title = paste0(school.name, note, " Average Daily Attendance in a Week"),
@@ -681,7 +709,7 @@ for (i in unique(scesd.month.students.23$school)) {
     
     graph.run.dfv3(scesd.month.students.23, "scesd" ,date, school, i)
     
-    ggsave(here("output","ADA","SCESD" ,"Nov 2023" ,paste0("Salinas City - ",i," ADA by Week", today(),".png")),
+    ggsave(here("output","ADA","SCESD" ,"Jan 2024" ,paste0("Salinas City - ",i," ADA by Week", today(),".png")),
            width = 8,
            height = 4.5)
     
@@ -725,6 +753,23 @@ temp %>%
 clipr::write_last_clip()
 
 
+temp %>%
+    ggplot( aes(x = week.start, y = weekly.ADA, group = school, color = school) ) +
+    geom_line() +
+     geom_point(size = 3, 
+       #         color = "#6C9BA6"
+                ) +
+    scale_x_date(date_breaks = "2 weeks",
+                 date_labels = "%m-%d-%Y",
+                 guide = guide_axis(n.dodge = 2)) +
+    scale_y_continuous(labels = scales::percent) +
+    theme_minimal() +
+    labs(title = paste0(school.name, note, " Average Daily Attendance in a Week"),
+         subtitle = "<span style = 'color:#DDA63A;'>Horizonal line represents Median without first and last week</span>",
+         y = "Average Percentage of Enrolled Students Attending Daily",
+         x = "Day Starting School Week") +
+    theme(plot.subtitle = element_markdown() )
+
 ####
 
 
@@ -743,7 +788,7 @@ for (i in unique(sol.month.student.abs.23$school)) {
     
     graph.run.dfv3(sol.month.student.abs.23, "soledad" ,date, school, i, "")
     
-    ggsave(here("output","ADA", "Soledad", "Nov 2023", paste0("Soledad - ",i," ADA by Week", today(),".png")),
+    ggsave(here("output","ADA", "Soledad", "Jan 2024", paste0("Soledad - ",i," ADA by Week", today(),".png")),
            width = 8,
            height = 4.5)
     
@@ -785,7 +830,7 @@ for (i in unique(sol.month.student.abs.23$school)) {
 
 
     
-ADA.graph <- function(df, school.name) {
+ADA.graph <- function(df, school.name, tit.note = "") {
     
 
     
@@ -805,12 +850,14 @@ ADA.graph <- function(df, school.name) {
                    color = "#6C9BA6") +
         geom_richtext(fill = NA, label.color = NA, label = "<span style = 'color:#DDA63A;'>Median</span>", 
                       aes(x = mdy("8/6/2023"), y = med.line, hjust = 0, vjust = 0)) +
-        scale_x_date(date_breaks = "2 weeks", date_labels = "%m-%d-%Y"
-        ) +
+        scale_x_date(date_breaks = "2 weeks",
+                     date_labels = "%m-%d-%Y",
+                     guide = guide_axis(n.dodge = 2)) +
         scale_y_continuous(labels = scales::percent) +
         theme_minimal() +
         labs(title = paste0( school.name, 
-            " Average Daily Attendance by Week"),
+            " Average Daily Attendance by Week ",
+            tit.note),
      #       subtitle = "<span style = 'color:#DDA63A;'>Horizonal line represents Median</span>",
             y = "Average Percentage of Enrolled Students Attending Daily",
             x = "Day Starting School Week") +
@@ -824,11 +871,25 @@ for (i in unique(ausd.ADA.schools$school)) {
     
     ADA.graph(ausd.ADA.schools, i)
     
-    ggsave(here("output","ADA","Alisal" ,"2023 Dec" ,paste0("Alisal - ",i," ADA by Week", today(),".png")),
+    ggsave(here("output","ADA","Alisal" ,"2024 Jan" ,paste0("Alisal - ",i," ADA by Week", today(),".png")),
                 width = 8,
                 height = 4.5)
     
 }
+
+for (i in unique(ausd.ADA.schools.SWD$school)) {
+    
+    ADA.graph(ausd.ADA.schools.SWD, i, "SWD")
+    
+    ggsave(here("output","ADA","Alisal" ,"2024 Jan" ,paste0("Alisal - ",i," ADA by Week SWD ", today(),".png")),
+           width = 8,
+           height = 4.5)
+    
+}
+
+
+
+
     
 ausd.ADA.schools %>%
     filter(school == "Loya") %>%
@@ -839,6 +900,33 @@ ausd.ADA.schools %>%
 ggsave(here("output","ADA",paste0("Make-Believe ADA by Week", today(),".png")),
        width = 8,
        height = 4.5)
+
+
+# Jan 2024 version for NMCUSD
+
+nmcusd.ADA.schools.all <- nmcusd.ADA.schools %>%
+#    filter(grade_level %in% c("TK", "K", "1")) %>%
+    filter(str_detect(instructional_setting, "SDC")) %>%
+    mutate(week.start = mdy(week.start)) %>%
+    group_by(school, week.start ) %>%
+    summarise(school.enrolled = sum(days_enrolled),
+              school.present = sum(days_present),
+              weekly.ADA = school.present/school.enrolled) 
+
+
+
+for (i in unique(nmcusd.ADA.schools.all$school)) {
+    
+    ADA.graph(nmcusd.ADA.schools.all, i, "SDC")
+    
+    ggsave(here("output","ADA","nmcusd" ,"2024 Jan" ,paste0("NMCUSD - ",i," ADA by Week SDC", today(),".png")),
+           width = 8,
+           height = 4.5)
+    
+}
+
+
+
 
 
 ### ADA based on Cronic for student group
@@ -878,8 +966,11 @@ graph.run.dfv4 <- function(df, dist, enrollment, title.name) {
                    color = "#6C9BA6") +
         geom_richtext(fill = NA, label.color = NA, label = "<span style = 'color:#DDA63A;'>Median</span>", 
                       aes(x = mdy("8/6/2023"), y = med.line, hjust = 0, vjust = 0)) +
-        scale_x_date(date_breaks = "2 weeks", date_labels = "%m-%d-%Y"
-        ) +
+        scale_x_date(date_breaks = "2 weeks",
+                     date_labels = "%m-%d-%Y",
+                     guide = guide_axis(n.dodge = 2)) +
+      #  {if(length(unique(df$Group)) >=8 )scale_x_discrete(guide = guide_axis(n.dodge = 2))} + #Fixes the overlapping axis labels to make them alternate if lots of columns
+        
         scale_y_continuous(labels = scales::percent) +
         theme_minimal() +
     labs(title = paste0(title.name, " Average Daily Attendance in a Week"),
@@ -899,13 +990,35 @@ ausd.month.student.abs.23 %>%
 # SCESD
 # SWD are focus
 stud.list <- scesd.month.students.demo.23 %>% 
-    filter(special_ed == "Yes") %>%
+    filter(special_ed_value == "Yes") %>%
     pull(student_id)
 
 
 scesd.month.students.23 %>%
     filter(student_id %in% stud.list ) %>%
     graph.run.dfv4("scesd" , length(stud.list), "Salinas City Students with Disabilities")
+
+
+for (i in unique(scesd.month.students.23$school)) {
+    
+    print(i)
+    
+working.df <-  scesd.month.students.23 %>%
+        filter(student_id %in% stud.list ,
+               school %in% i) 
+
+print(length(unique(working.df$student_id)) )   
+
+working.df %>%
+        graph.run.dfv4("scesd" , length(unique(working.df$student_id)) , paste0(i, " Students with Disabilities") )
+    
+    ggsave(here("output","ADA","SCESD" ,"Jan 2024" ,paste0("Salinas City - ",i,"SWD ADA by Week", today(),".png")),
+           width = 8,
+           height = 4.5)
+    
+}
+
+
 
 
 # AUSD 
@@ -936,6 +1049,32 @@ nmcusd.month.students.23 %>%
     graph.run.dfv4("nmcusd" , length(stud.list), "North Monterey Students with Disabilities")
 
 
+
+# Soledad
+# SWD are focus
+stud.list <- sol.month.students.demo.23 %>% 
+    filter(specialed_value == "Yes") %>%
+    pull(student_id)
+
+
+for (i in unique(sol.month.student.abs.23$school)) {
+    
+    print(i)
+    
+    working.df <-  sol.month.student.abs.23 %>%
+        filter(student_id %in% stud.list ,
+               school %in% i) 
+    
+    print(length(unique(working.df$student_id)) )   
+    
+    working.df %>%
+        graph.run.dfv4("soledad" , length(unique(working.df$student_id)) , paste0(i, " Students with Disabilities") )
+    
+    ggsave(here("output","ADA","Soledad" ,"Jan 2024" ,paste0("Soledad - ",i,"SWD ADA by Week", today(),".png")),
+           width = 8,
+           height = 4.5)
+    
+}
 
 
 
@@ -1006,10 +1145,10 @@ df.22 <- df.22 %>%
           group_by(district, school, year)  %>%
           transmute( days.absent = n()) %>%
           distinct()  %>%
-          ungroup() %>%
+          ungroup() # %>%
  
-     left_join(
-         calendars.oct) # %>%
+ #    left_join(
+ #        calendars.oct) # %>%
 #             filter(str_detect(school,"Laurel"))
 #     ) %>%
 #     mutate(weekly.absences.daily.average = days.absent/school.days,
@@ -1075,7 +1214,7 @@ print(i)
 chr.table <- chr.table %>%
     bind_rows(chronic.rate(scesd.month.students.demo.23 %>% 
                  filter( str_detect(school,i),
-                         special_ed == "Yes"
+                         special_ed_value == "Yes"
                          ), 
              scesd.month.students.23,
              student_id) %>%
@@ -1109,6 +1248,20 @@ for (i in unique(scesd.month.students.demo.22$school)) {
 
 
 clipr::write_clip(chr.table)
+
+
+
+# Uses File 3 done in Jan 2024
+scesd.month.students.demo.23 %>%
+    filter(special_ed_value == "Yes") %>%
+    mutate(chronic = if_else(attendance_percent <= 90, TRUE, FALSE)) %>%
+    group_by(school) %>%
+    summarise(chronic.rate = mean(chronic),
+              chronics = sum(chronic),
+              total = n())
+
+clipr::write_last_clip()
+
 
 
 
@@ -1219,13 +1372,36 @@ clipr::write_clip(chr.table)
 
 
 
+# Uses StudentAbsencesSummary Up to Date done in Jan 2024
+ausd.month.students.demo.23 %>%
+    filter(!is.na(swds) ) %>%
+    mutate(chronic = if_else(!is.na(chronically_absent), TRUE, FALSE)) %>%
+    group_by(school_name) %>%
+    summarise(total = n(),
+              chronics = sum(chronic),
+              chronic.rate = mean(chronic),
+              )
+
+clipr::write_last_clip()
+
+ausd.month.students.22 %>%
+ #   filter(!is.na(swds) ) %>%
+    mutate(chronic = if_else(!is.na(chronically_absent), TRUE, FALSE)) %>%
+    group_by(school_name) %>%
+    summarise(total = n(),
+              chronics = sum(chronic),
+              chronic.rate = mean(chronic),
+    )
+
+clipr::write_last_clip()
+
 
 
 # Soledad Chronic Rates 
 
 chr.table <-chronic.rate(scesd.month.students.demo.23 %>% 
                              filter( str_detect(school, "Laurel"),
-                                     special_ed == "Yes"), 
+                                     special_ed_value == "Yes"), 
                          scesd.month.students.23,
                          student_id) %>%
     mutate(school = i) %>%
@@ -1284,6 +1460,17 @@ clipr::write_clip(chr.table)
 
 
 
+# Uses StudentAbsencesSummary Up to Date done in Jan 2024
+sol.month.students.demo.23 %>%
+    filter( specialed_value == "Yes" ) %>%
+    mutate(chronic = if_else(x1_0_ahs_pr_ahs_en_100 <= 90, TRUE, FALSE)) %>%
+    group_by(school_name) %>%
+    summarise(total = n(),
+              chronics = sum(chronic),
+              chronic.rate = mean(chronic),
+    )
+
+clipr::write_last_clip()
 
 
 
@@ -1361,23 +1548,23 @@ chronic.rate.graph("NMCUSD TK-3",2022 , "October 28, 2022", 2)
 # chronic.rate.graph("Alisal", "October 27, 2023",3)
 
 
-chronic.rate.graph.sub("Alisal", 2023 ,"October 27, 2023",3, "All")
+chronic.rate.graph.sub("Alisal", 2023 ,"January 26, 2024",3, "All")
 
-chronic.rate.graph.sub("Alisal", 2023 ,"October 27, 2023",3, "SWD")
+chronic.rate.graph.sub("Alisal", 2023 ,"January 26, 2024",3, "SWD")
 
 
-chronic.rate.graph.sub("Alisal", 2022 ,"October 28, 2022",3, "All")
+chronic.rate.graph.sub("Alisal", 2022 ,"January 27, 2023",3, "All")
 
-chronic.rate.graph.sub("Alisal", 2022 ,"October 28, 2022",3, "SWD")
+chronic.rate.graph.sub("Alisal", 2022 ,"January 27, 2023",3, "SWD")
 
 
 
 # chronic.rate.graph("SCESD", "October 27, 2023", 3)
 
 
-chronic.rate.graph.sub("SCESD", 2023, "October 27, 2023",3, "All")
+chronic.rate.graph.sub("SCESD", 2023, "January 22, 2024",3, "All")
 
-chronic.rate.graph.sub("SCESD", 2023, "October 27, 2023",3, "SWD")
+chronic.rate.graph.sub("SCESD", 2023, "January 22, 2024",3, "SWD")
 
 
 chronic.rate.graph.sub("SCESD", 2022, "October 28, 2022",3, "All")
@@ -1389,9 +1576,9 @@ chronic.rate.graph.sub("SCESD", 2022, "October 28, 2022",3, "SWD")
 # soledad
 
 
-chronic.rate.graph.sub("Soledad", 2023, "October 27, 2023",2, "All")
+chronic.rate.graph.sub("Soledad", 2023, "January 13, 2024",2, "All")
 
-chronic.rate.graph.sub("Soledad", 2023, "October 27, 2023",2, "SWD")
+chronic.rate.graph.sub("Soledad", 2023, "January 13, 2024",2, "SWD")
 
 chronic.rate.graph.sub("Soledad", 2022, "October 28, 2022",2, "All")
 
